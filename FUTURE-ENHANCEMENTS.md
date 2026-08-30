@@ -23,3 +23,6 @@ Still open: syncing that progress across devices. Would need a backend (Supabase
 
 ## Sound Effects
 Add a short "wrong" buzz via Web Audio on a missed answer (currently only the reveal sting plays).
+
+## Save Data Export / Import
+Manual backup and restore of game progress (all 6 `localStorage` keys) as a downloadable JSON file. Useful as a safety net for transferring progress across devices or recovering from storage loss. Would add Export/Import buttons to the Settings screen.
