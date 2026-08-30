@@ -116,14 +116,19 @@ Voice selection defaults to `Auto`, which scores the device's voices to pick the
 
 A Playwright suite covers all three sections plus tracking and settings. It runs against a bundled static server and stubs every network call, so it needs no internet access after install.
 
+**No terminal needed:** double-click [run-tests.bat](run-tests.bat). It installs dependencies and the Chromium browser on first run, then gives you a menu to run the suite, watch it in a visible browser, open interactive UI mode, view the last report, or just serve the app.
+
+From a terminal instead:
+
 ```bash
 npm install
-npx playwright install chromium
+npm run setup   # downloads the Chromium binary (one time)
 npm test
 ```
 
 | Command | What it does |
 |---------|--------------|
+| `npm run setup` | Install the Chromium browser Playwright drives |
 | `npm test` | Full suite, desktop + mobile viewports |
 | `npm run test:desktop` | Chromium only |
 | `npm run test:mobile` | Pixel 5 viewport only |
@@ -160,6 +165,7 @@ js/data.js                       Pokémon list, types, aliases, type chart, spri
 js/audio.js                      audio settings, voice selection, stings, cries
 js/game.js                       screen routing, Who's That, Type Quiz, Pokédex, settings
 tests/                           Playwright suite + static server
+run-tests.bat                    double-click to run tests, no terminal needed
 .github/prompts/                 reusable chat prompts (see below)
 .github/copilot-instructions.md  project conventions, picked up automatically
 FUTURE-ENHANCEMENTS.md           ideas not built yet

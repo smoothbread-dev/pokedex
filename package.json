@@ -4,6 +4,7 @@
   "private": true,
   "description": "Gen I Kanto PokeDex hub - Who's That Pokemon, Type Quiz and Pokedex",
   "scripts": {
+    "setup": "playwright install chromium",
     "serve": "node tests/server.js",
     "test": "playwright test",
     "test:headed": "playwright test --headed",

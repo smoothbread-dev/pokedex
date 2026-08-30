@@ -61,7 +61,6 @@ body {
 .hub-card-desc { font-size: 0.75rem; color: #aaa; text-align: center; }
 
 /* ── Settings screens */
-.settings-title { font-size: 1.5rem; font-weight: 800; color: #f5c842; }
 .settings-section { width: 100%; }
 .settings-label { font-size: 0.8rem; color: #aaa; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -376,7 +375,6 @@ body {
 #main-menu-btn  { background: #16213e; color: #f5c842; border: 2px solid #f5c842; }
 
 /* ── Dex grid shared */
-.dex-grid-wrap { width: 100%; }
 .dex-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -421,8 +419,6 @@ body {
 .dex-card.unseen .dex-card-type { visibility: hidden; }
 #dex-progress { font-size: 0.72rem; color: #f5c842; text-align: center; }
 .dex-card:hover { border-color: #f5c842; transform: translateY(-2px); }
-.dex-card.playing { border-color: #2ecc71; animation: pulse 0.5s infinite alternate; }
-@keyframes pulse { from { box-shadow: 0 0 0 #2ecc71; } to { box-shadow: 0 0 8px #2ecc71; } }
 .dex-card img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; }
 .dex-card-name { font-size: 0.72rem; font-weight: 700; text-align: center; color: #eee; }
 .dex-card-id   { font-size: 0.65rem; color: #aaa; }
@@ -513,8 +509,6 @@ body {
 #tq-feedback { font-size: 0.95rem; font-weight: 700; text-align: center; min-height: 1.4rem; }
 #tq-feedback.correct { color: #2ecc71; }
 #tq-feedback.wrong   { color: #e74c3c; }
-.tq-stat { font-size: 0.9rem; color: #aaa; }
-.tq-stat span { color: #f5c842; font-weight: 700; }
 
 /* ── Screen header (back btn + title) */
 .screen-header {
@@ -658,7 +652,6 @@ body {
 #ta-clock { display: none; font-size: 2.4rem; font-weight: 900; color: #f5c842; font-variant-numeric: tabular-nums; }
 #ta-clock.urgent { color: #e74c3c; animation: urgentPulse 0.5s infinite alternate; }
 @keyframes urgentPulse { from { opacity: 1; } to { opacity: 0.55; } }
-#rounds-section { }
 
 /* ── Missed grid on end screen */
 #missed-section { width: 100%; display: none; }
@@ -846,7 +839,7 @@ body {
     <button id="hub-dex-btn" class="hub-card">
       <div class="hub-card-icon">📖</div>
       <div class="hub-card-title">Pokédex</div>
-      <div class="hub-card-desc">Browse all 151, filter by type — tap for cry</div>
+      <div class="hub-card-desc">Browse all 151 — search, filter and view details</div>
     </button>
     <button id="hub-settings-btn" class="hub-card">
       <div class="hub-card-icon">⚙️</div>
