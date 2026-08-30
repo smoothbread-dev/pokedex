@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokeDex</title>
+<style>
+/* ── Reset & base */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Screens */
+.screen { display: none; width: 100%; max-width: 680px; padding: 1rem; }
+.screen.active { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+
+/* ── Hub */
+.hub-title {
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 900;
+  color: #f5c842;
+  text-align: center;
+  margin-top: 1.5rem;
+}
+.hub-subtitle { color: #aaa; font-size: 0.9rem; text-align: center; }
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.hub-grid .hub-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  max-width: 50%;
+  margin: 0 auto;
+}
+.hub-card {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 12px;
+  padding: 1.25rem 1rem;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 110px;
+}
+.hub-card:hover, .hub-card:focus { transform: translateY(-3px); border-color: #f5c842; outline: none; }
+.hub-card-icon { font-size: 2.2rem; }
+.hub-card-title { font-weight: 700; font-size: 1rem; color: #f5c842; }
+.hub-card-desc { font-size: 0.75rem; color: #aaa; text-align: center; }
+
+/* ── Settings screens */
+.settings-title { font-size: 1.5rem; font-weight: 800; color: #f5c842; }
+.settings-section { width: 100%; }
+.settings-label { font-size: 0.8rem; color: #aaa; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.diff-btn, .round-btn, .tq-round-btn, .tq-mode-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  background: #16213e;
+  color: #eee;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.15s;
+  min-height: 44px;
+}
+.diff-btn.selected, .round-btn.selected, .tq-round-btn.selected, .tq-mode-btn.selected {
+  border-color: #f5c842;
+  color: #f5c842;
+  font-weight: 700;
+}
+.diff-btn:hover, .round-btn:hover, .tq-round-btn:hover, .tq-mode-btn:hover { border-color: #f5c842; }
+
+/* ── Primary buttons */
+.primary-btn {
+  background: #f5c842;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 48px;
+  width: 100%;
+  transition: opacity 0.15s;
+}
+.primary-btn:hover { opacity: 0.9; }
+.secondary-btn {
+  background: transparent;
+  color: #aaa;
+  border: 2px solid #0f3460;
+  border-radius: 10px;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.secondary-btn:hover { border-color: #f5c842; color: #f5c842; }
+
+/* ── Game screen */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.stat-box { background: #16213e; border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.85rem; flex: 1; min-width: 70px; text-align: center; }
+.stat-label { font-size: 0.65rem; color: #aaa; display: block; }
+.stat-val { font-size: 1.1rem; font-weight: 700; color: #f5c842; }
+#mult-badge {
+  display: none;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.pokemon-frame {
+  background: #16213e;
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+#timer-bar-wrap { width: 100%; height: 8px; background: #0f3460; border-radius: 4px; overflow: hidden; }
+#timer-bar { height: 100%; background: #f5c842; border-radius: 4px; transition: width 0.1s linear, background 0.3s; }
+
+#pokemon-stage {
+  position: relative;
+  width: clamp(140px, 40vw, 220px);
+  height: clamp(140px, 40vw, 220px);
+  flex-shrink: 0;
+}
+#pokemon-sil, #pokemon-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+#pokemon-sil {
+  filter: brightness(0);
+  transition: opacity 0.4s ease;
+}
+#pokemon-art {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  image-rendering: auto;
+}
+
+#progress-label { font-size: 0.75rem; color: #aaa; }
+
+.type-area {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+#answer-input {
+  background: #0f3460;
+  border: 2px solid #16213e;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 1rem;
+  padding: 0.6rem 1rem;
+  width: 100%;
+  max-width: 260px;
+  min-height: 44px;
+}
+#answer-input:focus { outline: none; border-color: #f5c842; }
+#submit-btn {
+  background: #f5c842;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+}
+#choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+.choice-btn {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 0.9rem;
+  padding: 0.65rem;
+  cursor: pointer;
+  min-height: 48px;
+  transition: border-color 0.15s;
+}
+.choice-btn:hover:not(:disabled) { border-color: #f5c842; }
+.correct-ans { background: #27ae60 !important; border-color: #27ae60 !important; color: #fff !important; }
+.wrong-ans   { background: #e74c3c !important; border-color: #e74c3c !important; color: #fff !important; }
+
+#feedback { font-size: 1rem; font-weight: 700; min-height: 1.5rem; text-align: center; }
+#feedback.correct { color: #2ecc71; }
+#feedback.wrong   { color: #e74c3c; }
+#hint-text { font-size: 0.85rem; color: #aaa; min-height: 1.2rem; text-align: center; }
+
+.game-btns { display: flex; gap: 0.5rem; justify-content: center; width: 100%; }
+#pause-btn, #hint-btn, #mute-btn {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  color: #eee;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+#pause-btn:hover, #hint-btn:hover, #mute-btn:hover { border-color: #f5c842; }
+#hint-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Pause overlay */
+#pause-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+#pause-overlay.active, #tq-pause-overlay.active { display: flex; }
+#tq-pause-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:1rem; }
+.pause-title { font-size: 2rem; font-weight: 900; color: #f5c842; }
+.pause-overlay-btn {
+  width: 220px;
+  padding: 0.75rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  border: none;
+}
+.pause-overlay-btn.primary { background: #f5c842; color: #1a1a2e; }
+.pause-overlay-btn.secondary { background: #16213e; color: #f5c842; border: 2px solid #f5c842; }
+
+/* ── End screen */
+.grade-box { font-size: 5rem; font-weight: 900; color: #f5c842; line-height: 1; }
+.end-stats { background: #16213e; border-radius: 12px; padding: 1rem 1.5rem; width: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
+.end-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
+.end-row .label { color: #aaa; }
+.end-row .value { font-weight: 700; color: #f5c842; }
+#end-btns { display: flex; gap: 0.75rem; width: 100%; flex-wrap: wrap; }
+#end-btns button {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.7rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  border: none;
+}
+#play-again-btn { background: #f5c842; color: #1a1a2e; }
+#main-menu-btn  { background: #16213e; color: #f5c842; border: 2px solid #f5c842; }
+
+/* ── Dex grid shared */
+.dex-grid-wrap { width: 100%; }
+.dex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+}
+.dex-card {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 10px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+  user-select: none;
+}
+.dex-card:hover { border-color: #f5c842; transform: translateY(-2px); }
+.dex-card.playing { border-color: #2ecc71; animation: pulse 0.5s infinite alternate; }
+@keyframes pulse { from { box-shadow: 0 0 0 #2ecc71; } to { box-shadow: 0 0 8px #2ecc71; } }
+.dex-card img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; }
+.dex-card-name { font-size: 0.72rem; font-weight: 700; text-align: center; color: #eee; }
+.dex-card-id   { font-size: 0.65rem; color: #aaa; }
+.dex-card-type { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Type badges */
+.type-badge { font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; color: #fff; }
+.type-normal   { background: #A8A878; }
+.type-fire     { background: #F08030; }
+.type-water    { background: #6890F0; }
+.type-electric { background: #F8D030; color: #333; }
+.type-grass    { background: #78C850; }
+.type-ice      { background: #98D8D8; color: #333; }
+.type-fighting { background: #C03028; }
+.type-poison   { background: #A040A0; }
+.type-ground   { background: #E0C068; color: #333; }
+.type-flying   { background: #A890F0; }
+.type-psychic  { background: #F85888; }
+.type-bug      { background: #A8B820; }
+.type-rock     { background: #B8A038; }
+.type-ghost    { background: #705898; }
+.type-dragon   { background: #7038F8; }
+.type-dark     { background: #705848; }
+.type-steel    { background: #B8B8D0; color: #333; }
+.type-fairy    { background: #EE99AC; color: #333; }
+
+/* ── Pokédex filter */
+#pokedex-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.type-filter-btn {
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 32px;
+  color: #fff;
+  background: #0f3460;
+  transition: border-color 0.15s;
+}
+.type-filter-btn.selected { border-color: #fff; }
+.type-filter-btn:first-child { background: #0f3460; color: #eee; }
+
+/* ── Type quiz */
+.tq-pokemon-box {
+  background: #16213e;
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+#tq-img { width: clamp(120px, 35vw, 200px); height: clamp(120px, 35vw, 200px); object-fit: contain; image-rendering: pixelated; transition: opacity 0.2s ease; }
+#tq-name { font-size: 1.1rem; font-weight: 700; color: #eee; }
+#tq-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+.tq-choice-btn {
+  padding: 0.6rem;
+  border: 2px solid #0f3460;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: #16213e;
+  color: #eee;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  transition: border-color 0.15s;
+}
+.tq-choice-btn:hover:not(:disabled) { border-color: #f5c842; }
+.tq-choice-btn .type-badge { font-size: 0.8rem; padding: 2px 7px; }
+#tq-question-label { font-size: 0.8rem; color: #aaa; text-align: center; min-height: 1.1rem; letter-spacing: 0.04em; }
+#tq-feedback { font-size: 0.95rem; font-weight: 700; text-align: center; min-height: 1.4rem; }
+#tq-feedback.correct { color: #2ecc71; }
+#tq-feedback.wrong   { color: #e74c3c; }
+.tq-stat { font-size: 0.9rem; color: #aaa; }
+.tq-stat span { color: #f5c842; font-weight: 700; }
+
+/* ── Screen header (back btn + title) */
+.screen-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  min-height: 44px;
+}
+.back-btn {
+  position: absolute;
+  left: 0;
+  background: none;
+  border: none;
+  color: #f5c842;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+.back-btn:hover { color: #fff; }
+.screen-title {
+  flex: 1;
+  font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+  font-weight: 800;
+  color: #f5c842;
+  text-align: center;
+}
+.screen-hint { font-size: 0.75rem; color: #aaa; text-align: center; }
+
+/* ── Scrollable content areas */
+.scroll-area { overflow-y: auto; width: 100%; max-height: calc(100dvh - 140px); }
+
+/* ── Screen slide transition */
+@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+.screen.active { animation: slideInRight 0.18s ease-out; }
+
+/* ── Mode buttons */
+.mode-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  background: #16213e;
+  color: #eee;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.15s;
+  min-height: 44px;
+}
+.mode-btn.selected { border-color: #f5c842; color: #f5c842; font-weight: 700; }
+.mode-btn:hover { border-color: #f5c842; }
+
+/* ── Lives row */
+#lives-row { display: none; gap: 0.4rem; font-size: 1.6rem; justify-content: center; }
+#lives-row span { transition: opacity 0.3s; }
+#lives-row span.lost { opacity: 0.2; filter: grayscale(1); }
+
+/* ── Time Attack clock */
+#ta-clock { display: none; font-size: 2.4rem; font-weight: 900; color: #f5c842; font-variant-numeric: tabular-nums; }
+#ta-clock.urgent { color: #e74c3c; animation: urgentPulse 0.5s infinite alternate; }
+@keyframes urgentPulse { from { opacity: 1; } to { opacity: 0.55; } }
+#rounds-section { }
+
+/* ── Missed grid on end screen */
+#missed-section { width: 100%; display: none; }
+#missed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.missed-card {
+  background: #2a0808;
+  border: 2px solid #c0392b;
+  border-radius: 8px;
+  padding: 0.5rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.missed-card:hover { border-color: #e74c3c; }
+.missed-card img { width: 80px; height: 80px; object-fit: contain; }
+.missed-card-id { font-size: 0.58rem; color: #888; }
+.missed-card-name { font-size: 0.68rem; font-weight: 700; text-align: center; color: #eee; }
+.missed-card-weak { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.15rem; margin-top: 0.1rem; }
+.missed-card-guess { font-size: 0.6rem; color: #e87070; font-style: italic; text-align: center; margin-top: 0.1rem; }
+
+/* ── TQ Review section */
+#tqe-review-section { width: 100%; margin-top: 1rem; display: none; }
+.review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.review-header-title { font-size: 0.75rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
+.review-filter { display: flex; gap: 0.3rem; }
+.review-filter-btn { padding: 0.2rem 0.55rem; border-radius: 4px; border: 1px solid #555; background: transparent; color: #888; font-size: 0.7rem; cursor: pointer; }
+.review-filter-btn.selected { border-color: #f5c842; color: #f5c842; }
+#tq-review-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.tq-review-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; border-radius: 6px; background: rgba(255,255,255,0.04); border-left: 3px solid transparent; }
+.tq-review-row.correct-row { border-left-color: #27ae60; }
+.tq-review-row.wrong-row { border-left-color: #c0392b; }
+.tq-review-sprite { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
+.tq-review-name { flex: 1; font-size: 0.72rem; font-weight: 700; color: #eee; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tq-review-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+.tq-review-q { font-size: 0.62rem; color: #aaa; background: rgba(255,255,255,0.1); padding: 0.15rem 0.35rem; border-radius: 3px; white-space: nowrap; }
+
+/* ── Pokédex search */
+#dex-search {
+  width: 100%;
+  background: #0f3460;
+  border: 2px solid #16213e;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 0.95rem;
+  padding: 0.55rem 1rem;
+  min-height: 44px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+#dex-search:focus { outline: none; border-color: #f5c842; }
+#dex-search::placeholder { color: #555; }
+
+/* ── Pokédex detail modal */
+#dex-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#dex-modal.open { display: flex; }
+#dex-modal-content {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 360px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  animation: slideInRight 0.18s ease-out;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+#dex-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.3rem;
+  cursor: pointer;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#dex-modal-close:hover { color: #f5c842; }
+#modal-artwork { width: clamp(130px, 40vw, 200px); height: clamp(130px, 40vw, 200px); object-fit: contain; }
+#modal-name { font-size: 1.3rem; font-weight: 800; color: #f5c842; }
+#modal-id { font-size: 0.8rem; color: #aaa; }
+#modal-types { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+#modal-types .type-badge { font-size: 0.85rem; padding: 3px 10px; }
+.modal-stats { width: 100%; }
+.modal-stat-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; font-size: 0.78rem; }
+.modal-stat-label { width: 42px; color: #aaa; text-align: right; flex-shrink: 0; font-size: 0.7rem; }
+.modal-stat-bar-wrap { flex: 1; background: #0f3460; border-radius: 3px; height: 7px; overflow: hidden; }
+.modal-stat-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.modal-stat-val { width: 28px; color: #eee; font-weight: 700; font-size: 0.78rem; }
+#modal-loading { color: #aaa; font-size: 0.85rem; text-align: center; }
+#modal-tabs { display:flex; gap:0; margin:0.6rem 0 0 0; width:100%; border-bottom:2px solid #0f3460; }
+.modal-tab { flex:1; padding:0.45rem 0.3rem; border-radius:0; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; background:transparent; color:#aaa; font-size:0.82rem; font-weight:600; cursor:pointer; transition:color 0.15s,border-color 0.15s; letter-spacing:0.03em; }
+.modal-tab.active { color:#f5c842; border-bottom-color:#f5c842; }
+#modal-tab-stats, #modal-tab-weaknesses { width:100%; }
+.weakness-group { display:flex; align-items:center; gap:0.5rem; margin:0.3rem 0; }
+.wk-label { font-size:0.8rem; font-weight:700; min-width:2.2rem; text-align:right; color:#aaa; flex-shrink:0; }
+.wk-badges { display:flex; flex-wrap:wrap; gap:0.3rem; }
+#modal-cry-btn {
+  background: #0f3460;
+  border: 2px solid #f5c842;
+  border-radius: 8px;
+  color: #f5c842;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+  min-height: 44px;
+  width: 100%;
+}
+#modal-cry-btn:hover { background: #f5c842; color: #1a1a2e; }
+
+/* ── Mobile */
+@media (max-width: 420px) {
+  .hub-grid { grid-template-columns: 1fr 1fr; }
+  .dex-grid  { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
+  .dex-card img { width: 60px; height: 60px; }
+  #choices { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 320px) {
+  .hub-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HUB ══════════════════════════════════════════════════════════════════ -->
+<div id="hub-screen" class="screen active">
+  <div class="hub-title">PokéDex</div>
+  <div class="hub-subtitle">Gen I — Kanto Edition</div>
+  <div class="hub-grid">
+    <button id="hub-game-btn" class="hub-card">
+      <div class="hub-card-icon">❓</div>
+      <div class="hub-card-title">Who's That?</div>
+      <div class="hub-card-desc">Guess the Pokémon from its silhouette</div>
+    </button>
+    <button id="hub-typequiz-btn" class="hub-card">
+      <div class="hub-card-icon">🔥</div>
+      <div class="hub-card-title">Type Quiz</div>
+      <div class="hub-card-desc">Guess what type each Pokémon is</div>
+    </button>
+    <button id="hub-dex-btn" class="hub-card">
+      <div class="hub-card-icon">📖</div>
+      <div class="hub-card-title">Pokédex</div>
+      <div class="hub-card-desc">Browse all 151, filter by type — tap for cry</div>
+    </button>
+  </div>
+</div>
+
+<!-- ══ WTP SETTINGS ═══════════════════════════════════════════════════════════ -->
+<div id="game-settings-screen" class="screen">
+  <div class="screen-header">
+    <button id="settings-back-btn" class="back-btn">&#8592;</button>
+    <div class="screen-title">Who's That Pokémon?</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Mode</div>
+    <div class="btn-row">
+      <button class="mode-btn selected" data-mode="normal">Normal</button>
+      <button class="mode-btn" data-mode="lives">Lives ❤️</button>
+      <button class="mode-btn" data-mode="timeattack">Time Attack ⚡</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Difficulty</div>
+    <div class="btn-row">
+      <button class="diff-btn selected" data-diff="easy">Easy</button>
+      <button class="diff-btn" data-diff="normal">Normal</button>
+      <button class="diff-btn" data-diff="hard">Hard (Type)</button>
+    </div>
+  </div>
+  <div class="settings-section" id="rounds-section">
+    <div class="settings-label">Rounds</div>
+    <div class="btn-row">
+      <button class="round-btn" data-rounds="10">10</button>
+      <button class="round-btn selected" data-rounds="25">25</button>
+      <button class="round-btn" data-rounds="50">50</button>
+      <button class="round-btn" data-rounds="151">All</button>
+    </div>
+  </div>
+  <button id="start-btn" class="primary-btn">START</button>
+</div>
+
+<!-- ══ GAME ═══════════════════════════════════════════════════════════════════ -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <div class="stat-box">
+      <span class="stat-label">Score</span>
+      <span class="stat-val" id="score-val">0</span>
+      <span id="mult-badge"></span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Streak</span>
+      <span class="stat-val" id="streak-val">0</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Best</span>
+      <span class="stat-val" id="best-val">0</span>
+    </div>
+  </div>
+  <div id="lives-row">
+    <span id="life-1">&#x2764;&#xFE0F;</span><span id="life-2">&#x2764;&#xFE0F;</span><span id="life-3">&#x2764;&#xFE0F;</span>
+  </div>
+  <div id="ta-clock">60</div>
+
+  <div class="pokemon-frame">
+    <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+    <div id="pokemon-stage">
+      <img id="pokemon-sil" src="" alt="Pokemon">
+      <img id="pokemon-art" src="" alt="Pokemon">
+    </div>
+    <div id="progress-label">1 / 25</div>
+  </div>
+
+  <div class="type-area" id="type-area">
+    <input id="answer-input" type="text" placeholder="Type the name…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button id="submit-btn">GO</button>
+  </div>
+
+  <div id="choices"></div>
+  <div id="hint-text"></div>
+  <div id="feedback"></div>
+
+  <div class="game-btns">
+    <button id="pause-btn">⏸ Pause</button>
+    <button id="hint-btn">Hint</button>
+    <button id="mute-btn">sound on</button>
+  </div>
+</div>
+
+<!-- ══ PAUSE OVERLAY ══════════════════════════════════════════════════════════ -->
+<div id="pause-overlay">
+  <div class="pause-title">⏸ PAUSED</div>
+  <button class="pause-overlay-btn primary" id="resume-btn">▶ RESUME</button>
+  <button class="pause-overlay-btn secondary" id="pause-menu-btn">🏠 MAIN MENU</button>
+</div>
+
+<!-- ══ TQ PAUSE OVERLAY ════════════════════════════════════════════════════════ -->
+<div id="tq-pause-overlay">
+  <div class="pause-title">&#x23F8; PAUSED</div>
+  <button class="pause-overlay-btn primary" id="tq-resume-btn">&#x25B6; RESUME</button>
+  <button class="pause-overlay-btn secondary" id="tq-pause-menu-btn">&#x1F3E0; MAIN MENU</button>
+</div>
+
+<!-- ══ END SCREEN ═════════════════════════════════════════════════════════════ -->
+<div id="end-screen" class="screen">
+  <div class="screen-title">Game Over</div>
+  <div class="grade-box" id="grade">A</div>
+  <div class="end-stats">
+    <div class="end-row"><span class="label">Score</span><span class="value" id="end-score">0</span></div>
+    <div class="end-row"><span class="label">Correct</span><span class="value" id="end-correct">0 / 25</span></div>
+    <div class="end-row"><span class="label">Best Streak</span><span class="value" id="end-streak">0</span></div>
+    <div class="end-row"><span class="label">Accuracy</span><span class="value" id="end-accuracy">0%</span></div>
+    <div class="end-row"><span class="label">All-time Best</span><span class="value" id="end-best">0</span></div>
+  </div>
+  <div id="end-btns">
+    <button id="play-again-btn">PLAY AGAIN</button>
+    <button id="main-menu-btn">MAIN MENU</button>
+  </div>
+  <div id="missed-section">
+    <div style="font-size:0.8rem;color:#aaa;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.5rem;">Missed</div>
+    <div id="missed-grid"></div>
+  </div>
+</div>
+
+<!-- ══ POKEDEX ════════════════════════════════════════════════════════════════ -->
+<div id="pokedex-screen" class="screen">
+  <div class="screen-header">
+    <button id="dex-back-btn" class="back-btn">&#8592;</button>
+    <div class="screen-title">📖 Pokédex</div>
+  </div>
+  <div class="screen-hint">Tap any card for details</div>
+  <input id="dex-search" type="search" placeholder="Search Pokémon…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <div id="pokedex-filter"></div>
+  <div class="scroll-area">
+    <div class="dex-grid" id="pokedex-grid"></div>
+  </div>
+</div>
+
+<!-- ══ TYPE QUIZ SETTINGS ═════════════════════════════════════════════════════ -->
+<div id="tq-settings-screen" class="screen">
+  <div class="screen-header">
+    <button id="tq-settings-back-btn" class="back-btn">&#8592;</button>
+    <div class="screen-title">🔥 Type Quiz</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Mode</div>
+    <div class="btn-row">
+      <button class="tq-mode-btn" data-mode="type">Guess Type</button>
+      <button class="tq-mode-btn" data-mode="weakness">Guess Weakness</button>
+      <button class="tq-mode-btn selected" data-mode="mixed">Mixed</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Rounds</div>
+    <div class="btn-row">
+      <button class="tq-round-btn" data-rounds="10">10</button>
+      <button class="tq-round-btn selected" data-rounds="20">20</button>
+      <button class="tq-round-btn" data-rounds="40">40</button>
+    </div>
+  </div>
+  <button id="tq-start-btn" class="primary-btn">START</button>
+</div>
+
+<!-- ══ TYPE QUIZ GAME ══════════════════════════════════════════════════════════ -->
+<div id="tq-screen" class="screen">
+  <div class="game-header">
+    <div class="stat-box">
+      <span class="stat-label">Score</span>
+      <span class="stat-val" id="tq-score-val">0</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Progress</span>
+      <span class="stat-val" id="tq-progress">1 / 20</span>
+    </div>
+    <button id="tq-pause-btn" class="secondary-btn" style="min-height:44px;padding:0.3rem 0.7rem;">&#x23F8; Pause</button>
+  </div>
+  <div class="tq-pokemon-box">
+    <img id="tq-img" src="" alt="Pokemon">
+    <div id="tq-name"></div>
+  </div>
+  <div id="tq-question-label"></div>
+  <div id="tq-choices"></div>
+  <div id="tq-feedback"></div>
+</div>
+
+<!-- ══ TYPE QUIZ END ══════════════════════════════════════════════════════════ -->
+<div id="tq-end-screen" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" id="tqe-back-btn">&#8592;</button>
+    <div class="screen-title">Type Quiz — Results</div>
+  </div>
+  <div class="grade-box" id="tqe-grade">A</div>
+  <div class="end-stats">
+    <div class="end-row"><span class="label">Score</span><span class="value" id="tqe-score">0</span></div>
+    <div class="end-row"><span class="label">Correct</span><span class="value" id="tqe-correct">0 / 20</span></div>
+    <div class="end-row"><span class="label">Accuracy</span><span class="value" id="tqe-accuracy">0%</span></div>
+  </div>
+  <div id="end-btns">
+    <button id="tqe-play-again-btn">PLAY AGAIN</button>
+    <button id="tqe-menu-btn">MAIN MENU</button>
+  </div>
+  <div id="tqe-review-section">
+    <div class="review-header">
+      <span class="review-header-title">Round Review</span>
+      <div class="review-filter">
+        <button class="review-filter-btn selected" id="tqr-wrong-btn">Wrong only</button>
+        <button class="review-filter-btn" id="tqr-all-btn">All</button>
+      </div>
+    </div>
+    <div id="tq-review-list"></div>
+  </div>
+</div>
+
+<!-- ══ DEX MODAL ══════════════════════════════════════════════════════════════ -->
+<div id="dex-modal" role="dialog" aria-modal="true">
+  <div id="dex-modal-content">
+    <button id="dex-modal-close" aria-label="Close">&#x2715;</button>
+    <img id="modal-artwork" src="" alt="">
+    <div id="modal-name"></div>
+    <div id="modal-id"></div>
+    <div id="modal-types"></div>
+    <div id="modal-tabs">
+      <button class="modal-tab active" data-tab="weaknesses">Weaknesses</button>
+      <button class="modal-tab" data-tab="stats">Stats</button>
+    </div>
+    <div id="modal-tab-weaknesses">
+      <div class="weakness-group" id="weak-4x" style="display:none"><span class="wk-label">4&#xD7;</span><div class="wk-badges"></div></div>
+      <div class="weakness-group" id="weak-2x" style="display:none"><span class="wk-label">2&#xD7;</span><div class="wk-badges"></div></div>
+      <div class="weakness-group" id="weak-half" style="display:none"><span class="wk-label">&#xBD;&#xD7;</span><div class="wk-badges"></div></div>
+      <div class="weakness-group" id="weak-quarter" style="display:none"><span class="wk-label">&#xBC;&#xD7;</span><div class="wk-badges"></div></div>
+      <div class="weakness-group" id="weak-0x" style="display:none"><span class="wk-label">0&#xD7;</span><div class="wk-badges"></div></div>
+    </div>
+    <div id="modal-tab-stats" style="display:none">
+      <div id="modal-loading">Loading stats&#x2026;</div>
+      <div class="modal-stats" id="modal-stats" style="display:none;width:100%"></div>
+      <button id="modal-cry-btn">&#x1F50A; Play Cry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Scripts ════════════════════════════════════════════════════════════════ -->
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script>
+document.getElementById('tq-pause-btn').addEventListener('click', toggleTqPause);
+document.getElementById('tq-resume-btn').addEventListener('click', toggleTqPause);
+document.getElementById('tq-pause-menu-btn').addEventListener('click', tqGoToMainMenu);
+document.getElementById('tqe-back-btn').addEventListener('click', () => showScreen('hub-screen'));
+document.getElementById('tqr-wrong-btn').addEventListener('click', () => setTqReviewFilter('wrong'));
+document.getElementById('tqr-all-btn').addEventListener('click', () => setTqReviewFilter('all'));
+
+document.querySelectorAll('.tq-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tq-mode-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    tqMode = btn.dataset.mode;
+  });
+});
+</script>
+</body>
+</html>
