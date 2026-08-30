@@ -146,7 +146,7 @@ test.describe('help', () => {
     await expect(page.locator('#help-modal')).toContainText('Seen');
     await expect(page.locator('#help-modal')).toContainText('Named');
     await expect(page.locator('#help-modal')).toContainText('Shiny');
-    await expect(page.locator('#help-modal .help-table tbody tr')).toHaveCount(5);
+    await expect(page.locator('#help-modal .help-table tbody tr')).toHaveCount(3);
     await page.click('#help-modal-close');
     await expect(page.locator('#help-modal')).not.toHaveClass(/open/);
   });

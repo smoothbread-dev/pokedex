@@ -123,84 +123,59 @@ test.describe('normal mode', () => {
     await expect(page.locator('#missed-grid .missed-card')).toContainText(target.display);
     await expect(page.locator('#missed-grid .missed-card')).toContainText('You said:');
   });
-});
 
-test.describe('lives mode', () => {
-  test('hides the rounds selector and shows three hearts', async ({ page }) => {
-    await page.click('#hub-game-btn');
-    await page.click('.mode-btn[data-mode="lives"]');
-    await expect(page.locator('#rounds-section')).toBeHidden();
-    await page.click('#start-btn');
-    await expect(page.locator('#lives-row')).toBeVisible();
-    await expect(page.locator('#lives-row .lost')).toHaveCount(0);
-  });
-
-  test('labels progress by round number rather than a fixed total', async ({ page }) => {
-    await startWhosThat(page, { mode: 'lives' });
-    await expect(page.locator('#progress-label')).toHaveText('Round 1');
-    await answerAndAdvance(page, { correct: true });
+  test('waits for the reveal cry before advancing when it runs long', async ({ page }) => {
+    await startWhosThat(page, { rounds: 10 });
+    await page.evaluate(() => {
+      audioSettings.sound = true;
+      audioSettings.voice = false;
+      audioSettings.cries = true;
+      window.__finishCry = null;
+      window.playCry = (id, onDone) => { window.__finishCry = onDone; };
+    });
+    await answer(page, { correct: true });
+    await page.waitForTimeout(3600);
+    await expect(page.locator('#progress-label')).toHaveText('1 / 10');
+    await page.evaluate(() => window.__finishCry());
     await waitForRound(page);
-    await expect(page.locator('#progress-label')).toHaveText('Round 2');
+    await expect(page.locator('#progress-label')).toHaveText('2 / 10');
   });
 
-  test('loses a heart per wrong answer and ends at zero', async ({ page }) => {
-    await startWhosThat(page, { mode: 'lives' });
-    await answerAndAdvance(page, { correct: false });
-    await expect(page.locator('#lives-row .lost')).toHaveCount(1);
-    await waitForRound(page);
-    await answerAndAdvance(page, { correct: false });
-    await expect(page.locator('#lives-row .lost')).toHaveCount(2);
-    await waitForRound(page);
-    await answerAndAdvance(page, { correct: false });
-    await expect(page.locator('#end-screen')).toHaveClass(/active/, { timeout: 10000 });
+  test('does not add extra delay after a short reveal cry', async ({ page }) => {
+    await startWhosThat(page, { rounds: 10 });
+    await page.evaluate(() => {
+      audioSettings.sound = true;
+      audioSettings.voice = false;
+      audioSettings.cries = true;
+      window.playCry = (id, onDone) => setTimeout(onDone, 500);
+    });
+    await answer(page, { correct: true });
+    await page.waitForTimeout(3300);
+    await expect(page.locator('#progress-label')).toHaveText('2 / 10');
   });
 
-  test('end totals count rounds played, not the rounds setting', async ({ page }) => {
-    await startWhosThat(page, { mode: 'lives', rounds: 25 });
-    await answerAndAdvance(page, { correct: true });
-    await waitForRound(page);
-    await answerAndAdvance(page, { correct: false });
-    await waitForRound(page);
-    await answerAndAdvance(page, { correct: false });
-    await waitForRound(page);
-    await answerAndAdvance(page, { correct: false });
-    await expect(page.locator('#end-screen')).toHaveClass(/active/, { timeout: 10000 });
-    await expect(page.locator('#end-correct')).toHaveText('1 / 4');
-    await expect(page.locator('#end-accuracy')).toHaveText('25%');
-  });
-});
-
-test.describe('time attack', () => {
-  test('shows the clock and hides the per-round timer bar', async ({ page }) => {
-    await startWhosThat(page, { mode: 'timeattack' });
-    await expect(page.locator('#ta-clock')).toBeVisible();
-    await expect(page.locator('#timer-bar-wrap')).toBeHidden();
-    await expect(page.locator('#progress-label')).toBeHidden();
-  });
-
-  test('ends when the clock runs out', async ({ page }) => {
-    await startWhosThat(page, { mode: 'timeattack' });
-    await page.evaluate(() => { taTimeLeft = 0.3; });
-    await expect(page.locator('#end-screen')).toHaveClass(/active/, { timeout: 10000 });
-  });
-
-  test('a round still on screen when time expires is not counted', async ({ page }) => {
-    await startWhosThat(page, { mode: 'timeattack' });
-    await page.evaluate(() => { taTimeLeft = 0.3; });
-    await expect(page.locator('#end-screen')).toHaveClass(/active/, { timeout: 10000 });
-    await expect(page.locator('#end-correct')).toHaveText('0 / 0');
-  });
-
-  test('the clock pauses and resumes', async ({ page }) => {
-    await startWhosThat(page, { mode: 'timeattack' });
-    await page.click('#pause-btn');
-    await expect(page.locator('#pause-overlay')).toBeVisible();
-    const held = await page.evaluate(() => taTimeLeft);
-    await page.waitForTimeout(1200);
-    expect(await page.evaluate(() => taTimeLeft)).toBe(held);
-    await page.click('#resume-btn');
-    await page.waitForTimeout(600);
-    expect(await page.evaluate(() => taTimeLeft)).toBeLessThan(held);
+  test('caps cry waiting so trailing silence cannot stall the reveal', async ({ page }) => {
+    await startWhosThat(page, { rounds: 10 });
+    const elapsed = await page.evaluate(() => new Promise(resolve => {
+      audioSettings.sound = true;
+      audioSettings.cries = true;
+      const OriginalAudio = Audio;
+      window.Audio = function() {
+        return {
+          volume: 1,
+          onended: null,
+          onerror: null,
+          play: () => Promise.resolve(),
+        };
+      };
+      const started = performance.now();
+      playCry(current.id, () => {
+        window.Audio = OriginalAudio;
+        resolve(performance.now() - started);
+      });
+    }));
+    expect(elapsed).toBeGreaterThanOrEqual(1000);
+    expect(elapsed).toBeLessThan(1800);
   });
 });
 

@@ -6,9 +6,6 @@ let difficulty = 'normal';
 let roundActive = false, paused = false;
 let roundCount = 25;
 let hintUsed = false;
-let gameMode = 'normal';
-let lives = 3;
-let taTimeLeft = 60, taInterval = null;
 let missedPokemon = [];
 
 const LS_KEY = 'wtp_best_score';
@@ -142,58 +139,49 @@ function useHint() {
   btn.textContent = cost === 0 ? 'Hint used' : 'Hint used (-' + cost + ' pts)';
 }
 
-// ── Lives UI
-function updateLivesUI() {
-  const row = document.getElementById('lives-row');
-  if (gameMode !== 'lives') { row.style.display = 'none'; return; }
-  row.style.display = 'flex';
-  for (let i = 1; i <= 3; i++) {
-    const span = document.getElementById('life-' + i);
-    span.classList.toggle('lost', i > lives);
-  }
-}
-
-// ── Time Attack clock UI
-function updateTAClock() {
-  const el = document.getElementById('ta-clock');
-  if (gameMode !== 'timeattack') { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.textContent = Math.ceil(taTimeLeft);
-  el.classList.toggle('urgent', taTimeLeft <= 10);
-}
-
-function startTATimer() {
-  clearInterval(taInterval);
-  taInterval = setInterval(() => {
-    taTimeLeft -= 0.1;
-    updateTAClock();
-    if (taTimeLeft <= 0) {
-      clearInterval(taInterval);
-      endGame();
-    }
-  }, 100);
-}
-
-// ── Infinite shuffled pool for time attack
-let taPool = [];
-function getNextTAPokemon() {
-  if (taPool.length === 0) taPool = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 })));
-  return taPool.pop();
-}
-
 // Between-round waits are re-armable so pausing works outside an active round.
-let pendingAction = null, pendingDelay = 0;
+let pendingAction = null, pendingDelay = 0, pendingReady = true, pendingDeadline = 0;
+
+function runPending() {
+  const fn = pendingAction;
+  clearPending();
+  if (fn) fn();
+}
 
 function schedulePending(fn, ms) {
   clearTimeout(advanceTimeout);
   pendingAction = fn;
   pendingDelay = ms;
-  advanceTimeout = setTimeout(() => { pendingAction = null; fn(); }, ms);
+  pendingReady = true;
+  pendingDeadline = Date.now() + ms;
+  advanceTimeout = setTimeout(runPending, ms);
+}
+
+function schedulePendingAfter(fn, ms, waitForReady) {
+  clearPending();
+  pendingAction = fn;
+  pendingDelay = ms;
+  pendingReady = false;
+  pendingDeadline = Date.now() + ms;
+  try {
+    waitForReady(() => {
+      if (!pendingAction) return;
+      pendingReady = true;
+      if (!paused) {
+        const remaining = Math.max(0, pendingDeadline - Date.now());
+        advanceTimeout = setTimeout(runPending, remaining);
+      }
+    });
+  } catch (e) {
+    schedulePending(fn, ms);
+  }
 }
 
 function clearPending() {
   clearTimeout(advanceTimeout);
   pendingAction = null;
+  pendingReady = true;
+  pendingDeadline = 0;
 }
 
 function startGame() {
@@ -202,40 +190,16 @@ function startGame() {
   timerSecs = DIFF[difficulty].timer;
   clearPending();
 
-  if (gameMode === 'timeattack') {
-    taTimeLeft = 60;
-    taPool = [];
-    queue = null;
-    updateTAClock();
-  } else if (gameMode === 'lives') {
-    lives = 3;
-    queue = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 }))).slice(0, 151);
-    updateLivesUI();
-  } else {
-    queue = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 }))).slice(0, roundCount);
-  }
+  queue = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 }))).slice(0, roundCount);
 
   updateStats();
   showScreen('game-screen');
-
-  document.getElementById('timer-bar-wrap').style.display = gameMode === 'timeattack' ? 'none' : '';
-  document.getElementById('progress-label').style.display = gameMode === 'timeattack' ? 'none' : '';
-
-  updateLivesUI();
-  updateTAClock();
-
-  if (gameMode === 'timeattack') startTATimer();
-
   nextRound();
 }
 
 function nextRound() {
-  if (gameMode === 'timeattack') {
-    current = getNextTAPokemon();
-  } else {
-    if (queue.length === 0) { endGame(); return; }
-    current = queue.pop();
-  }
+  if (queue.length === 0) { endGame(); return; }
+  current = queue.pop();
 
   clearPending();
   answered++;
@@ -267,12 +231,8 @@ function nextRound() {
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
 
-  if (gameMode === 'lives') {
-    document.getElementById('progress-label').textContent = 'Round ' + answered;
-  } else if (queue) {
-    document.getElementById('progress-label').textContent =
-      (roundCount - queue.length) + ' / ' + roundCount;
-  }
+  document.getElementById('progress-label').textContent =
+    (roundCount - queue.length) + ' / ' + roundCount;
 
   const hintBtn = document.getElementById('hint-btn');
   hintBtn.disabled = false;
@@ -299,7 +259,7 @@ function nextRound() {
     document.getElementById('choices').style.display = 'grid';
   }
 
-  if (gameMode !== 'timeattack') startTimer();
+  startTimer();
   setTimeout(() => announceQuestion(), 150);
 }
 
@@ -336,22 +296,20 @@ function togglePause() {
   paused = !paused;
   if (paused) {
     clearInterval(timerInterval);
-    clearInterval(taInterval);
     clearTimeout(advanceTimeout);
     document.getElementById('pause-overlay').classList.add('active');
   } else {
     document.getElementById('pause-overlay').classList.remove('active');
-    if (gameMode === 'timeattack') startTATimer();
-    else if (roundActive) resumeTimer();
-    if (pendingAction) {
-      advanceTimeout = setTimeout(() => { const fn = pendingAction; pendingAction = null; fn(); }, pendingDelay);
+    if (roundActive) resumeTimer();
+    if (pendingAction && pendingReady) {
+      const remaining = Math.max(0, pendingDeadline - Date.now());
+      advanceTimeout = setTimeout(runPending, remaining || pendingDelay);
     }
   }
 }
 
 function goToMainMenu() {
   clearInterval(timerInterval);
-  clearInterval(taInterval);
   clearPending();
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   paused = false;
@@ -404,7 +362,6 @@ function revealAnswer(wasCorrect, guessText) {
   document.getElementById('hint-btn').disabled = true;
 
   const capturedId = current.id, capturedName = current.name, capturedShiny = currentShiny;
-  announceReveal(capturedName, () => playCry(capturedId));
   registerSeen(capturedId);
 
   if (capturedShiny) document.getElementById('shiny-badge').style.display = 'block';
@@ -412,7 +369,7 @@ function revealAnswer(wasCorrect, guessText) {
   const fb = document.getElementById('feedback');
   if (wasCorrect) {
     const mult  = getMultiplier();
-    const bonus = gameMode !== 'timeattack' && timeLeft >= (timerSecs - 3);
+    const bonus = timeLeft >= (timerSecs - 3);
     const base  = 10 + (bonus ? 5 : 0);
     const pts   = base * mult;
     score += pts;
@@ -433,26 +390,15 @@ function revealAnswer(wasCorrect, guessText) {
     fb.textContent = "It's " + displayName(capturedName) + '!';
     fb.className = 'wrong';
 
-    if (gameMode === 'lives') {
-      lives--;
-      updateLivesUI();
-      if (lives <= 0) {
-        updateStats();
-        schedulePending(endGame, 1800);
-        return;
-      }
-    }
   }
 
   updateStats();
-  schedulePending(nextRound, gameMode === 'timeattack' ? 1800 : 3000);
+  schedulePendingAfter(nextRound, 3000,
+    done => announceReveal(capturedName, () => playCry(capturedId, done)));
 }
 
 function endGame() {
-  // A round still on screen when the clock runs out was never played.
-  const unfinished = roundActive ? 1 : 0;
   clearInterval(timerInterval);
-  clearInterval(taInterval);
   clearPending();
   roundActive = false;
   paused = false;
@@ -465,7 +411,7 @@ function endGame() {
     document.getElementById('best-val').textContent = allTimeBest;
   }
 
-  const totalRounds = gameMode === 'normal' ? roundCount : Math.max(0, answered - unfinished);
+  const totalRounds = roundCount;
   const accuracy = totalRounds > 0 ? Math.round(correct / totalRounds * 100) : 0;
   document.getElementById('grade').textContent =
     accuracy >= 90 ? 'S' : accuracy >= 70 ? 'A' : accuracy >= 50 ? 'B' : 'C';
@@ -1025,12 +971,6 @@ function renderTqReview() {
 document.getElementById('hub-game-btn').addEventListener('click', () => showScreen('game-settings-screen'));
 document.getElementById('hub-dex-btn').addEventListener('click', () => { buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
 document.getElementById('hub-typequiz-btn').addEventListener('click', () => showScreen('tq-settings-screen'));
-
-document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => {
-  gameMode = b.dataset.mode;
-  document.querySelectorAll('.mode-btn').forEach(x => x.classList.toggle('selected', x === b));
-  document.getElementById('rounds-section').style.display = gameMode === 'normal' ? '' : 'none';
-}));
 
 document.querySelectorAll('.diff-btn').forEach(b => b.addEventListener('click', () => {
   difficulty = b.dataset.diff;

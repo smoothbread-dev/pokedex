@@ -628,31 +628,6 @@ body {
 @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 .screen.active { animation: slideInRight 0.18s ease-out; }
 
-/* ── Mode buttons */
-.mode-btn {
-  padding: 0.5rem 1rem;
-  border: 2px solid #0f3460;
-  border-radius: 8px;
-  background: #16213e;
-  color: #eee;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: border-color 0.15s;
-  min-height: 44px;
-}
-.mode-btn.selected { border-color: #f5c842; color: #f5c842; font-weight: 700; }
-.mode-btn:hover { border-color: #f5c842; }
-
-/* ── Lives row */
-#lives-row { display: none; gap: 0.4rem; font-size: 1.6rem; justify-content: center; }
-#lives-row span { transition: opacity 0.3s; }
-#lives-row span.lost { opacity: 0.2; filter: grayscale(1); }
-
-/* ── Time Attack clock */
-#ta-clock { display: none; font-size: 2.4rem; font-weight: 900; color: #f5c842; font-variant-numeric: tabular-nums; }
-#ta-clock.urgent { color: #e74c3c; animation: urgentPulse 0.5s infinite alternate; }
-@keyframes urgentPulse { from { opacity: 1; } to { opacity: 0.55; } }
-
 /* ── Missed grid on end screen */
 #missed-section { width: 100%; display: none; }
 #missed-grid {
@@ -910,14 +885,6 @@ body {
     <div class="screen-title">Who's That Pokémon?</div>
   </div>
   <div class="settings-section">
-    <div class="settings-label">Mode</div>
-    <div class="btn-row">
-      <button class="mode-btn selected" data-mode="normal">Normal</button>
-      <button class="mode-btn" data-mode="lives">Lives ❤️</button>
-      <button class="mode-btn" data-mode="timeattack">Time Attack ⚡</button>
-    </div>
-  </div>
-  <div class="settings-section">
     <div class="settings-label">Difficulty</div>
     <div class="btn-row">
       <button class="diff-btn selected" data-diff="easy">Easy</button>
@@ -925,7 +892,7 @@ body {
       <button class="diff-btn" data-diff="hard">Hard (Type)</button>
     </div>
   </div>
-  <div class="settings-section" id="rounds-section">
+  <div class="settings-section">
     <div class="settings-label">Rounds</div>
     <div class="btn-row">
       <button class="round-btn" data-rounds="10">10</button>
@@ -954,11 +921,6 @@ body {
       <span class="stat-val" id="best-val">0</span>
     </div>
   </div>
-  <div id="lives-row">
-    <span id="life-1">&#x2764;&#xFE0F;</span><span id="life-2">&#x2764;&#xFE0F;</span><span id="life-3">&#x2764;&#xFE0F;</span>
-  </div>
-  <div id="ta-clock">60</div>
-
   <div class="pokemon-frame">
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="pokemon-stage">
@@ -1146,9 +1108,7 @@ body {
         <tr><th>Where</th><th>&#x1F441;</th><th>&#x2713;</th><th>&#x2728;</th></tr>
       </thead>
       <tbody>
-        <tr><td>Who’s That — Normal</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
-        <tr><td>Who’s That — Lives</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
-        <tr><td>Who’s That — Time Attack</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
+        <tr><td>Who’s That</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
         <tr><td>Type Quiz</td><td class="yes">&#x2713;</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td></tr>
         <tr><td>Browsing the Pokédex</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td></tr>
       </tbody>

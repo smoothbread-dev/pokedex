@@ -19,12 +19,6 @@ The hub screen has four sections:
 
 ## Who's That Pokémon?
 
-**Modes**
-
-- **Normal** — fixed number of rounds
-- **Lives ❤️** — three lives, run until you lose them all
-- **Time Attack ⚡** — 60 seconds, as many as you can get
-
 **Difficulty**
 
 | Difficulty | Timer | Answering | Hint cost |
@@ -43,7 +37,7 @@ The hub screen has four sections:
 | Streak ×3 multiplier | at 10 correct in a row |
 | Wrong answer or timeout | 0, streak resets |
 
-Round count is 10 / 25 / 50 / All (151). Best score persists in `localStorage`. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
+Round count is 10 / 25 / 50 / All (151). Best score persists in `localStorage`. After an answer, the next round waits for the reveal announcement and the audible part of the Pokémon cry before advancing; trailing silence in cry files is capped. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
 
 Alternate spellings are accepted (e.g. "Nidoran", "Farfetch'd", "Mr Mime").
 
@@ -79,11 +73,11 @@ What contributes:
 
 | Where | Seen | Named | Shiny |
 |-------|:----:|:-----:|:-----:|
-| Who's That — Normal / Lives / Time Attack | ✓ | ✓ | ✓ |
+| Who's That | ✓ | ✓ | ✓ |
 | Type Quiz | ✓ | — | — |
 | Browsing the Pokédex | — | — | — |
 
-All Who's That modes count identically — difficulty and round count make no difference. Type Quiz only marks a Pokémon as seen, because it shows you the name. The `?` button on the Pokédex screen opens this same legend in-app.
+Who's That difficulty and round count make no difference to tracking. Type Quiz only marks a Pokémon as seen, because it shows you the name. The `?` button on the Pokédex screen opens this same legend in-app.
 
 The Pokédex screen shows a running `👁 n / 151 seen · ✓ n named · ✨ n shiny` counter, and the detail modal flags the named and shiny states.
 
@@ -142,7 +136,7 @@ Spec layout:
 | File | Covers |
 |------|--------|
 | `tests/hub.spec.js` | Screen routing and back navigation |
-| `tests/whos-that.spec.js` | Scoring, multipliers, hints, all three modes, pause, end screen |
+| `tests/whos-that.spec.js` | Scoring, multipliers, hints, reveal audio timing, pause, end screen |
 | `tests/type-quiz.spec.js` | Type/weakness rounds, pause, results and round review |
 | `tests/pokedex.spec.js` | Grid, search, filters, detail modal, discovery and shiny gating, help |
 | `tests/tracking.spec.js` | Seen / named / shiny registration, marks and persistence |

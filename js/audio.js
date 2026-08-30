@@ -13,6 +13,7 @@ function criesOn() { return audioSettings.sound && audioSettings.cries; }
 
 let voices = [];
 let audioCtx = null;
+const CRY_WAIT_MS = 1200;
 
 const TTS_NAMES = {
   "nidoran-f": "Nidoran Female",
@@ -151,16 +152,27 @@ function announceReveal(name, onDone) {
   });
 }
 
-function playCry(id) {
-  if (!criesOn()) return;
+function playCry(id, onDone) {
+  if (!criesOn()) { if (onDone) onDone(); return; }
   try {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (onDone) onDone();
+    };
     const legacy = new Audio(CRY_LEGACY(id));
     legacy.volume = 0.5;
-    legacy.onerror = () => {
+    const playModern = () => {
       const modern = new Audio(CRY_LATEST(id));
       modern.volume = 0.5;
-      modern.play().catch(() => {});
+      modern.onended = finish;
+      modern.onerror = finish;
+      modern.play().catch(finish);
     };
-    legacy.play().catch(() => {});
-  } catch (e) {}
+    legacy.onerror = playModern;
+    legacy.onended = finish;
+    legacy.play().catch(playModern);
+    setTimeout(finish, CRY_WAIT_MS);
+  } catch (e) { if (onDone) onDone(); }
 }

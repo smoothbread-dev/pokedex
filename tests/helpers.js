@@ -70,14 +70,9 @@ function readJson(page, key) {
 }
 
 /** Starts Who's That Pokemon from the hub with the given settings. */
-async function startWhosThat(page, { mode = 'normal', difficulty = 'easy', rounds } = {}) {
+async function startWhosThat(page, { difficulty = 'easy', rounds } = {}) {
   await page.click('#hub-game-btn');
-  // The rounds selector is only rendered in normal mode, so set it first.
-  if (rounds) {
-    await page.click('.mode-btn[data-mode="normal"]');
-    await page.click(`.round-btn[data-rounds="${rounds}"]`);
-  }
-  await page.click(`.mode-btn[data-mode="${mode}"]`);
+  if (rounds) await page.click(`.round-btn[data-rounds="${rounds}"]`);
   await page.click(`.diff-btn[data-diff="${difficulty}"]`);
   await page.click('#start-btn');
   await expect(page.locator('#game-screen')).toHaveClass(/active/);

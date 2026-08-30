@@ -40,15 +40,12 @@ test('Type Quiz registers seen only', async ({ page }) => {
   expect(await readJson(page, 'wtp_shiny_dex') || []).not.toContain(id);
 });
 
-test('every Who\'s That mode contributes the same way', async ({ page }) => {
+test('a correct answer registers the pokemon in the caught dex', async ({ page }) => {
   await openApp(page);
-  for (const mode of ['normal', 'lives', 'timeattack']) {
-    await page.evaluate(() => { if (typeof goToMainMenu === 'function') goToMainMenu(); });
-    await startWhosThat(page, { mode });
-    const target = await currentPokemon(page);
-    await answerAndAdvance(page, { correct: true });
-    expect(await readJson(page, 'wtp_caught_dex')).toContain(target.id);
-  }
+  await startWhosThat(page);
+  const target = await currentPokemon(page);
+  await answerAndAdvance(page, { correct: true });
+  expect(await readJson(page, 'wtp_caught_dex')).toContain(target.id);
 });
 
 test.describe('shiny', () => {
