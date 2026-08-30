@@ -1,0 +1,18 @@
+{
+  "name": "pokedex-gen1",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gen I Kanto PokeDex hub - Who's That Pokemon, Type Quiz and Pokedex",
+  "scripts": {
+    "serve": "node tests/server.js",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:desktop": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=mobile",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

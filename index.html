@@ -172,6 +172,22 @@ body {
   transition: opacity 0.6s ease;
   image-rendering: auto;
 }
+#shiny-badge {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #f5c842;
+  color: #1a1a2e;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  animation: shinyPop 0.4s ease-out, shinyGlow 1s infinite alternate;
+}
+@keyframes shinyPop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes shinyGlow { from { box-shadow: 0 0 2px #f5c842; } to { box-shadow: 0 0 14px #f5c842; } }
 
 #progress-label { font-size: 0.75rem; color: #aaa; }
 
@@ -232,7 +248,7 @@ body {
 #hint-text { font-size: 0.85rem; color: #aaa; min-height: 1.2rem; text-align: center; }
 
 .game-btns { display: flex; gap: 0.5rem; justify-content: center; width: 100%; }
-#pause-btn, #hint-btn, #mute-btn {
+#pause-btn, #hint-btn {
   background: #16213e;
   border: 2px solid #0f3460;
   border-radius: 8px;
@@ -242,8 +258,73 @@ body {
   cursor: pointer;
   min-height: 44px;
 }
-#pause-btn:hover, #hint-btn:hover, #mute-btn:hover { border-color: #f5c842; }
+#pause-btn:hover, #hint-btn:hover { border-color: #f5c842; }
 #hint-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Settings toggles */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.toggle-name { font-size: 0.95rem; font-weight: 700; color: #eee; }
+.toggle-desc { font-size: 0.72rem; color: #aaa; margin-top: 0.15rem; }
+.toggle-switch {
+  flex-shrink: 0;
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  border: 2px solid #0f3460;
+  background: #0f3460;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s, border-color 0.18s;
+}
+.toggle-switch .toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #888;
+  transition: transform 0.18s, background 0.18s;
+}
+.toggle-switch.on { background: #f5c842; border-color: #f5c842; }
+.toggle-switch.on .toggle-knob { transform: translateX(22px); background: #1a1a2e; }
+.toggle-switch:disabled { cursor: default; }
+#audio-suboptions.disabled { opacity: 0.4; }
+.voice-row { display: flex; gap: 0.5rem; align-items: stretch; }
+#set-voice-select {
+  flex: 1;
+  min-width: 0;
+  background: #0f3460;
+  border: 2px solid #16213e;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  min-height: 44px;
+}
+#set-voice-select:focus { outline: none; border-color: #f5c842; }
+#voice-test-btn {
+  flex-shrink: 0;
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+#voice-test-btn:hover { border-color: #f5c842; color: #f5c842; }
 
 /* ── Pause overlay */
 #pause-overlay {
@@ -314,7 +395,31 @@ body {
   cursor: pointer;
   transition: border-color 0.15s, transform 0.15s;
   user-select: none;
+  position: relative;
 }
+.dex-shiny-mark { display: none; position: absolute; top: 3px; right: 5px; font-size: 0.75rem; }
+.dex-card.has-shiny { border-color: #f5c842; }
+.dex-card.has-shiny .dex-shiny-mark { display: block; }
+.dex-caught-mark {
+  display: none;
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #27ae60;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+}
+.dex-card.caught .dex-caught-mark { display: block; }
+.dex-card.unseen img { filter: brightness(0); opacity: 0.55; }
+.dex-card.unseen .dex-card-name { color: #666; }
+.dex-card.unseen .dex-card-type { visibility: hidden; }
+#dex-progress { font-size: 0.72rem; color: #f5c842; text-align: center; }
 .dex-card:hover { border-color: #f5c842; transform: translateY(-2px); }
 .dex-card.playing { border-color: #2ecc71; animation: pulse 0.5s infinite alternate; }
 @keyframes pulse { from { box-shadow: 0 0 0 #2ecc71; } to { box-shadow: 0 0 8px #2ecc71; } }
@@ -443,6 +548,84 @@ body {
   text-align: center;
 }
 .screen-hint { font-size: 0.75rem; color: #aaa; text-align: center; }
+.help-btn {
+  position: absolute;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #0f3460;
+  background: #16213e;
+  color: #f5c842;
+  font-size: 0.95rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.help-btn:hover { border-color: #f5c842; }
+
+/* ── Help modal */
+#help-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#help-modal.open { display: flex; }
+#help-modal-content {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  animation: slideInRight 0.18s ease-out;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+#help-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.3rem;
+  cursor: pointer;
+  min-width: 36px;
+  min-height: 36px;
+}
+#help-modal-close:hover { color: #f5c842; }
+.help-title { font-size: 1.15rem; font-weight: 800; color: #f5c842; margin-bottom: 0.75rem; }
+.help-row { display: flex; gap: 0.7rem; align-items: flex-start; margin-bottom: 0.85rem; }
+.help-icon { flex-shrink: 0; width: 26px; text-align: center; font-size: 0.95rem; line-height: 1.35; }
+.help-icon .dot {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #27ae60;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 18px;
+}
+.help-name { font-size: 0.85rem; font-weight: 700; color: #eee; }
+.help-desc { font-size: 0.75rem; color: #aaa; line-height: 1.45; margin-top: 0.1rem; }
+.help-sub { font-size: 0.72rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; margin: 1rem 0 0.4rem; }
+.help-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+.help-table th, .help-table td { padding: 0.35rem 0.3rem; text-align: center; border-bottom: 1px solid #0f3460; }
+.help-table th { color: #aaa; font-weight: 600; }
+.help-table td:first-child, .help-table th:first-child { text-align: left; color: #eee; }
+.help-table .yes { color: #2ecc71; font-weight: 700; }
+.help-table .no { color: #555; }
 
 /* ── Scrollable content areas */
 .scroll-area { overflow-y: auto; width: 100%; max-height: calc(100dvh - 140px); }
@@ -582,6 +765,23 @@ body {
 }
 #dex-modal-close:hover { color: #f5c842; }
 #modal-artwork { width: clamp(130px, 40vw, 200px); height: clamp(130px, 40vw, 200px); object-fit: contain; }
+#modal-artwork.silhouette { filter: brightness(0); opacity: 0.55; }
+#modal-locked { font-size: 0.78rem; color: #aaa; text-align: center; padding: 0.5rem 0 0.25rem; }
+#modal-shiny-btn {
+  background: #0f3460;
+  border: 2px solid #0f3460;
+  border-radius: 20px;
+  color: #aaa;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.8rem;
+  cursor: pointer;
+  min-height: 32px;
+}
+#modal-shiny-btn.on { border-color: #f5c842; color: #f5c842; }
+#modal-shiny-caught { font-size: 0.65rem; color: #f5c842; }
+#modal-shiny-locked { font-size: 0.65rem; color: #666; }
+#modal-caught { font-size: 0.65rem; color: #2ecc71; }
 #modal-name { font-size: 1.3rem; font-weight: 800; color: #f5c842; }
 #modal-id { font-size: 0.8rem; color: #aaa; }
 #modal-types { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
@@ -648,6 +848,65 @@ body {
       <div class="hub-card-title">Pokédex</div>
       <div class="hub-card-desc">Browse all 151, filter by type — tap for cry</div>
     </button>
+    <button id="hub-settings-btn" class="hub-card">
+      <div class="hub-card-icon">⚙️</div>
+      <div class="hub-card-title">Settings</div>
+      <div class="hub-card-desc">Sound and Pokédex options for the whole site</div>
+    </button>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ═══════════════════════════════════════════════════════ -->
+<div id="settings-screen" class="screen">
+  <div class="screen-header">
+    <button id="global-settings-back-btn" class="back-btn">&#8592;</button>
+    <div class="screen-title">⚙️ Settings</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Audio</div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-name">Sound</div>
+        <div class="toggle-desc">Master switch for all audio</div>
+      </div>
+      <button class="toggle-switch" id="set-sound" role="switch" aria-checked="true" aria-label="Sound"><span class="toggle-knob"></span></button>
+    </div>
+    <div id="audio-suboptions">
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-name">Announcer</div>
+          <div class="toggle-desc">Spoken “Who’s that Pokémon!” and reveals</div>
+        </div>
+        <button class="toggle-switch" id="set-voice" role="switch" aria-checked="true" aria-label="Announcer"><span class="toggle-knob"></span></button>
+      </div>
+      <div class="toggle-row" style="flex-direction:column;align-items:stretch;gap:0.5rem;">
+        <div>
+          <div class="toggle-name">Announcer Voice</div>
+          <div class="toggle-desc">Auto picks the closest deep English voice on each device</div>
+        </div>
+        <div class="voice-row">
+          <select id="set-voice-select" aria-label="Announcer voice"></select>
+          <button id="voice-test-btn">Test</button>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-name">Pokémon Cries</div>
+          <div class="toggle-desc">Cry playback in games and the Pokédex</div>
+        </div>
+        <button class="toggle-switch" id="set-cries" role="switch" aria-checked="true" aria-label="Pokémon cries"><span class="toggle-knob"></span></button>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Pokédex</div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-name">Discovery Mode</div>
+        <div class="toggle-desc">Hide Pokémon you haven’t encountered yet as silhouettes</div>
+      </div>
+      <button class="toggle-switch" id="set-discovery" role="switch" aria-checked="true" aria-label="Discovery mode"><span class="toggle-knob"></span></button>
+    </div>
   </div>
 </div>
 
@@ -712,6 +971,7 @@ body {
     <div id="pokemon-stage">
       <img id="pokemon-sil" src="" alt="Pokemon">
       <img id="pokemon-art" src="" alt="Pokemon">
+      <div id="shiny-badge">✨ SHINY</div>
     </div>
     <div id="progress-label">1 / 25</div>
   </div>
@@ -728,7 +988,6 @@ body {
   <div class="game-btns">
     <button id="pause-btn">⏸ Pause</button>
     <button id="hint-btn">Hint</button>
-    <button id="mute-btn">sound on</button>
   </div>
 </div>
 
@@ -772,8 +1031,10 @@ body {
   <div class="screen-header">
     <button id="dex-back-btn" class="back-btn">&#8592;</button>
     <div class="screen-title">📖 Pokédex</div>
+    <button id="dex-help-btn" class="help-btn" aria-label="What do the marks mean?">?</button>
   </div>
   <div class="screen-hint">Tap any card for details</div>
+  <div id="dex-progress">✓ 0 / 151 named  ·  ✨ 0 / 151 shiny</div>
   <input id="dex-search" type="search" placeholder="Search Pokémon…" autocomplete="off" autocorrect="off" spellcheck="false">
   <div id="pokedex-filter"></div>
   <div class="scroll-area">
@@ -856,13 +1117,66 @@ body {
   </div>
 </div>
 
+<!-- ══ HELP MODAL ═════════════════════════════════════════════════════════════ -->
+<div id="help-modal" role="dialog" aria-modal="true">
+  <div id="help-modal-content">
+    <button id="help-modal-close" aria-label="Close">&#x2715;</button>
+    <div class="help-title">Pokédex Marks</div>
+
+    <div class="help-row">
+      <div class="help-icon">&#x1F441;</div>
+      <div>
+        <div class="help-name">Seen</div>
+        <div class="help-desc">The Pokémon has appeared in front of you at least once. This unlocks its Pokédex entry — until then it stays a silhouette named “???”.</div>
+      </div>
+    </div>
+
+    <div class="help-row">
+      <div class="help-icon"><span class="dot">&#x2713;</span></div>
+      <div>
+        <div class="help-name">Named</div>
+        <div class="help-desc">You correctly identified it in Who’s That Pokémon. Seeing it is not enough — you have to get the answer right.</div>
+      </div>
+    </div>
+
+    <div class="help-row">
+      <div class="help-icon">&#x2728;</div>
+      <div>
+        <div class="help-name">Shiny</div>
+        <div class="help-desc">You met its shiny form (a 1 in 128 chance each round) and named it correctly. The card gets a gold border. While Discovery Mode is on, the shiny toggle on an entry stays hidden until you have actually found that shiny.</div>
+      </div>
+    </div>
+
+    <div class="help-sub">What counts</div>
+    <table class="help-table">
+      <thead>
+        <tr><th>Where</th><th>&#x1F441;</th><th>&#x2713;</th><th>&#x2728;</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Who’s That — Normal</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
+        <tr><td>Who’s That — Lives</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
+        <tr><td>Who’s That — Time Attack</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td><td class="yes">&#x2713;</td></tr>
+        <tr><td>Type Quiz</td><td class="yes">&#x2713;</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td></tr>
+        <tr><td>Browsing the Pokédex</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td><td class="no">&#x2014;</td></tr>
+      </tbody>
+    </table>
+    <div class="help-desc" style="margin-top:0.6rem;">All Who’s That modes count the same — difficulty and round count make no difference. Type Quiz only marks a Pokémon as seen, since it shows you the name.</div>
+    <div class="help-desc" style="margin-top:0.5rem;">Silhouettes can be turned off with <strong>Discovery Mode</strong> in Settings. Progress is saved on this device only.</div>
+  </div>
+</div>
+
 <!-- ══ DEX MODAL ══════════════════════════════════════════════════════════════ -->
 <div id="dex-modal" role="dialog" aria-modal="true">
   <div id="dex-modal-content">
     <button id="dex-modal-close" aria-label="Close">&#x2715;</button>
     <img id="modal-artwork" src="" alt="">
+    <button id="modal-shiny-btn" aria-pressed="false">✨ Normal</button>
+    <div id="modal-shiny-locked" style="display:none">✨ Shiny not found yet</div>
+    <div id="modal-caught" style="display:none">✓ Correctly named</div>
+    <div id="modal-shiny-caught" style="display:none">✨ Shiny registered</div>
     <div id="modal-name"></div>
     <div id="modal-id"></div>
+    <div id="modal-locked" style="display:none">Not yet encountered — find it in a game to fill in this entry.</div>
     <div id="modal-types"></div>
     <div id="modal-tabs">
       <button class="modal-tab active" data-tab="weaknesses">Weaknesses</button>

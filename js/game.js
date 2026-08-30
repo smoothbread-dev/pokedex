@@ -15,6 +15,57 @@ const LS_KEY = 'wtp_best_score';
 let allTimeBest = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
 document.getElementById('best-val').textContent = allTimeBest;
 
+// ── Shiny dex
+const SHINY_LS_KEY = 'wtp_shiny_dex';
+const SHINY_RATE = 1 / 128;
+let shinyDex = new Set();
+try { shinyDex = new Set(JSON.parse(localStorage.getItem(SHINY_LS_KEY) || '[]')); } catch (e) {}
+let currentShiny = false;
+
+function registerShiny(id) {
+  if (shinyDex.has(id)) return false;
+  shinyDex.add(id);
+  try { localStorage.setItem(SHINY_LS_KEY, JSON.stringify([...shinyDex])); } catch (e) {}
+  return true;
+}
+
+// ── Caught dex (correctly named at least once)
+const CAUGHT_LS_KEY = 'wtp_caught_dex';
+let caughtDex = new Set();
+try { caughtDex = new Set(JSON.parse(localStorage.getItem(CAUGHT_LS_KEY) || '[]')); } catch (e) {}
+
+function registerCaught(id) {
+  if (caughtDex.has(id)) return false;
+  caughtDex.add(id);
+  try { localStorage.setItem(CAUGHT_LS_KEY, JSON.stringify([...caughtDex])); } catch (e) {}
+  return true;
+}
+
+// ── Seen dex (shown in any round, named or not)
+const SEEN_LS_KEY = 'wtp_seen_dex';
+let seenDex = new Set();
+try { seenDex = new Set(JSON.parse(localStorage.getItem(SEEN_LS_KEY) || '[]')); } catch (e) {}
+// Anything already named counts as seen, for players whose progress predates seen-tracking.
+caughtDex.forEach(id => seenDex.add(id));
+
+function registerSeen(id) {
+  if (seenDex.has(id)) return false;
+  seenDex.add(id);
+  try { localStorage.setItem(SEEN_LS_KEY, JSON.stringify([...seenDex])); } catch (e) {}
+  return true;
+}
+
+// ── Pokédex display settings
+const DEX_LS_KEY = 'wtp_dex_settings';
+const dexSettings = { discovery: true };
+try { Object.assign(dexSettings, JSON.parse(localStorage.getItem(DEX_LS_KEY) || '{}')); } catch (e) {}
+
+function saveDexSettings() {
+  try { localStorage.setItem(DEX_LS_KEY, JSON.stringify(dexSettings)); } catch (e) {}
+}
+
+function isHidden(id) { return dexSettings.discovery && !seenDex.has(id); }
+
 // ── Type quiz state
 let tqQueue = [], tqCurrent = null, tqScore = 0, tqCorrect = 0, tqTotal = 20;
 let tqRoundActive = false;
@@ -22,6 +73,19 @@ let tqRoundIsWeakness = false;
 let tqMode = 'mixed';
 let tqReview = [];
 let tqReviewFilter = 'wrong';
+let tqAdvanceTimeout = null, tqPendingAction = null, tqPendingDelay = 0, tqPausedRoundActive = false;
+
+function tqSchedule(fn, ms) {
+  clearTimeout(tqAdvanceTimeout);
+  tqPendingAction = fn;
+  tqPendingDelay = ms;
+  tqAdvanceTimeout = setTimeout(() => { tqPendingAction = null; fn(); }, ms);
+}
+
+function tqClearPending() {
+  clearTimeout(tqAdvanceTimeout);
+  tqPendingAction = null;
+}
 
 const GEN1_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
   'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon'];
@@ -66,7 +130,7 @@ function hintBtnLabel() {
 }
 
 function useHint() {
-  if (hintUsed || !roundActive || !current) return;
+  if (hintUsed || !roundActive || paused || !current) return;
   hintUsed = true;
   const cost = DIFF[difficulty].hintCost;
   if (cost > 0) { score -= cost; updateStats(); }
@@ -117,11 +181,26 @@ function getNextTAPokemon() {
   return taPool.pop();
 }
 
+// Between-round waits are re-armable so pausing works outside an active round.
+let pendingAction = null, pendingDelay = 0;
+
+function schedulePending(fn, ms) {
+  clearTimeout(advanceTimeout);
+  pendingAction = fn;
+  pendingDelay = ms;
+  advanceTimeout = setTimeout(() => { pendingAction = null; fn(); }, ms);
+}
+
+function clearPending() {
+  clearTimeout(advanceTimeout);
+  pendingAction = null;
+}
+
 function startGame() {
   score = 0; streak = 0; bestStreak = 0; correct = 0; answered = 0; paused = false;
   missedPokemon = [];
   timerSecs = DIFF[difficulty].timer;
-  clearTimeout(advanceTimeout);
+  clearPending();
 
   if (gameMode === 'timeattack') {
     taTimeLeft = 60;
@@ -158,11 +237,13 @@ function nextRound() {
     current = queue.pop();
   }
 
-  clearTimeout(advanceTimeout);
+  clearPending();
   answered++;
   roundActive = true;
   paused = false;
   hintUsed = false;
+  currentShiny = Math.random() < SHINY_RATE;
+  document.getElementById('shiny-badge').style.display = 'none';
 
   const sil = document.getElementById('pokemon-sil');
   const art = document.getElementById('pokemon-art');
@@ -176,14 +257,19 @@ function nextRound() {
     sil.style.opacity = '1';
     requestAnimationFrame(() => { sil.style.transition = ''; });
   };
-  sil.src = SPRITE_SHOWDOWN(current.id);
-  art.src = SPRITE_OFFICIAL(current.id);
+  const pixelFallback = () => (currentShiny ? SPRITE_URL_SHINY(current.id) : SPRITE_URL(current.id));
+  sil.onerror = () => { sil.onerror = null; sil.src = pixelFallback(); };
+  art.onerror = () => { art.onerror = null; art.src = pixelFallback(); };
+  sil.src = currentShiny ? SPRITE_SHOWDOWN_SHINY(current.id) : SPRITE_SHOWDOWN(current.id);
+  art.src = currentShiny ? SPRITE_OFFICIAL_SHINY(current.id) : SPRITE_OFFICIAL(current.id);
   requestAnimationFrame(() => { art.style.transition = ''; });
 
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = '';
 
-  if (gameMode !== 'timeattack' && queue) {
+  if (gameMode === 'lives') {
+    document.getElementById('progress-label').textContent = 'Round ' + answered;
+  } else if (queue) {
     document.getElementById('progress-label').textContent =
       (roundCount - queue.length) + ' / ' + roundCount;
   }
@@ -246,23 +332,27 @@ function onTimeout() {
 }
 
 function togglePause() {
-  if (!roundActive) return;
+  if (!roundActive && !pendingAction) return;
   paused = !paused;
   if (paused) {
     clearInterval(timerInterval);
-    if (gameMode === 'timeattack') clearInterval(taInterval);
+    clearInterval(taInterval);
+    clearTimeout(advanceTimeout);
     document.getElementById('pause-overlay').classList.add('active');
   } else {
     document.getElementById('pause-overlay').classList.remove('active');
     if (gameMode === 'timeattack') startTATimer();
-    else resumeTimer();
+    else if (roundActive) resumeTimer();
+    if (pendingAction) {
+      advanceTimeout = setTimeout(() => { const fn = pendingAction; pendingAction = null; fn(); }, pendingDelay);
+    }
   }
 }
 
 function goToMainMenu() {
   clearInterval(timerInterval);
   clearInterval(taInterval);
-  clearTimeout(advanceTimeout);
+  clearPending();
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   paused = false;
   roundActive = false;
@@ -271,7 +361,7 @@ function goToMainMenu() {
 }
 
 function submitAnswer() {
-  if (!roundActive) return;
+  if (!roundActive || paused) return;
   const guess = document.getElementById('answer-input').value;
   if (!guess.trim()) return;
   clearInterval(timerInterval);
@@ -289,7 +379,7 @@ function buildChoices() {
     btn.className = 'choice-btn';
     btn.textContent = displayName(name);
     btn.addEventListener('click', () => {
-      if (!roundActive) return;
+      if (!roundActive || paused) return;
       clearInterval(timerInterval);
       const isRight = name === current.name;
       container.querySelectorAll('.choice-btn').forEach(b => {
@@ -313,8 +403,11 @@ function revealAnswer(wasCorrect, guessText) {
   document.getElementById('submit-btn').disabled = true;
   document.getElementById('hint-btn').disabled = true;
 
-  const capturedId = current.id, capturedName = current.name;
-  announceReveal(capturedName, () => { if (speechEnabled) playCry(capturedId); });
+  const capturedId = current.id, capturedName = current.name, capturedShiny = currentShiny;
+  announceReveal(capturedName, () => playCry(capturedId));
+  registerSeen(capturedId);
+
+  if (capturedShiny) document.getElementById('shiny-badge').style.display = 'block';
 
   const fb = document.getElementById('feedback');
   if (wasCorrect) {
@@ -326,15 +419,17 @@ function revealAnswer(wasCorrect, guessText) {
     streak++;
     correct++;
     if (streak > bestStreak) bestStreak = streak;
+    registerCaught(capturedId);
     let msg = 'Correct! +' + pts;
     if (bonus && mult > 1) msg += ' (speed + x' + mult + ' streak!)';
     else if (bonus)        msg += ' (speed bonus!)';
     else if (mult > 1)     msg += ' (x' + mult + ' streak!)';
+    if (capturedShiny) msg += registerShiny(capturedId) ? ' ✨ Shiny registered!' : ' ✨ Shiny (already caught)';
     fb.textContent = msg;
     fb.className = 'correct';
   } else {
     streak = 0;
-    missedPokemon.push({ id: capturedId, name: capturedName, guess: guessText || '' });
+    missedPokemon.push({ id: capturedId, name: capturedName, guess: guessText || '', shiny: capturedShiny });
     fb.textContent = "It's " + displayName(capturedName) + '!';
     fb.className = 'wrong';
 
@@ -342,26 +437,26 @@ function revealAnswer(wasCorrect, guessText) {
       lives--;
       updateLivesUI();
       if (lives <= 0) {
-        advanceTimeout = setTimeout(() => endGame(), 1800);
+        updateStats();
+        schedulePending(endGame, 1800);
         return;
       }
     }
   }
 
   updateStats();
-
-  if (gameMode === 'timeattack') {
-    advanceTimeout = setTimeout(() => nextRound(), 1800);
-  } else {
-    advanceTimeout = setTimeout(() => nextRound(), 3000);
-  }
+  schedulePending(nextRound, gameMode === 'timeattack' ? 1800 : 3000);
 }
 
 function endGame() {
+  // A round still on screen when the clock runs out was never played.
+  const unfinished = roundActive ? 1 : 0;
   clearInterval(timerInterval);
   clearInterval(taInterval);
-  clearTimeout(advanceTimeout);
+  clearPending();
   roundActive = false;
+  paused = false;
+  document.getElementById('pause-overlay').classList.remove('active');
 
   const isNewBest = score > allTimeBest;
   if (isNewBest) {
@@ -370,7 +465,7 @@ function endGame() {
     document.getElementById('best-val').textContent = allTimeBest;
   }
 
-  const totalRounds = gameMode === 'timeattack' ? answered : roundCount;
+  const totalRounds = gameMode === 'normal' ? roundCount : Math.max(0, answered - unfinished);
   const accuracy = totalRounds > 0 ? Math.round(correct / totalRounds * 100) : 0;
   document.getElementById('grade').textContent =
     accuracy >= 90 ? 'S' : accuracy >= 70 ? 'A' : accuracy >= 50 ? 'B' : 'C';
@@ -391,25 +486,25 @@ function renderMissedGrid() {
   grid.innerHTML = '';
   if (missedPokemon.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
-  missedPokemon.forEach(({ id, name, guess }) => {
+  missedPokemon.forEach(({ id, name, guess, shiny }) => {
     const typeStr = TYPES[id - 1] || 'Normal';
     const wkMap = computeWeaknesses(typeStr);
     const bigWeaks = Object.keys(wkMap).filter(t => wkMap[t] >= 2);
     const card = document.createElement('div');
     card.className = 'missed-card';
     card.style.cursor = 'pointer';
-    card.addEventListener('click', () => openDexModal(id, name));
+    card.addEventListener('click', () => openDexModal(id, name, shiny));
     const img = document.createElement('img');
-    img.src = SPRITE_OFFICIAL(id);
+    img.src = shiny ? SPRITE_OFFICIAL_SHINY(id) : SPRITE_OFFICIAL(id);
     img.alt = name;
     img.loading = 'lazy';
-    img.onerror = () => { img.src = SPRITE_URL(id); };
+    img.onerror = () => { img.src = shiny ? SPRITE_URL_SHINY(id) : SPRITE_URL(id); };
     const idEl = document.createElement('div');
     idEl.className = 'missed-card-id';
     idEl.textContent = '#' + String(id).padStart(3, '0');
     const label = document.createElement('div');
     label.className = 'missed-card-name';
-    label.textContent = displayName(name);
+    label.textContent = (shiny ? '✨ ' : '') + displayName(name);
     const typesEl = document.createElement('div');
     typesEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.2rem;justify-content:center;margin-top:0.1rem;';
     typeStr.split('/').forEach(t => {
@@ -452,19 +547,49 @@ function renderMissedGrid() {
 
 // ── Pokédex modal
 let activeDexId = null;
+let modalShiny = false;
 const statsCache = new Map();
 
-function openDexModal(id, name) {
+function updateModalArtwork() {
+  document.getElementById('modal-artwork').src =
+    modalShiny ? SPRITE_OFFICIAL_SHINY(activeDexId) : SPRITE_OFFICIAL(activeDexId);
+  const btn = document.getElementById('modal-shiny-btn');
+  btn.classList.toggle('on', modalShiny);
+  btn.setAttribute('aria-pressed', modalShiny ? 'true' : 'false');
+  btn.textContent = modalShiny ? '✨ Shiny' : '✨ Normal';
+  document.getElementById('modal-shiny-caught').style.display =
+    shinyDex.has(activeDexId) ? '' : 'none';
+  document.getElementById('modal-caught').style.display =
+    caughtDex.has(activeDexId) ? '' : 'none';
+}
+
+function openDexModal(id, name, showShiny = false) {
   const modal = document.getElementById('dex-modal');
   const typeStr = TYPES[id - 1] || 'Normal';
+  const locked = isHidden(id);
+  // showShiny comes from the missed grid, where you just encountered the shiny yourself.
+  const shinyLocked = dexSettings.discovery && !shinyDex.has(id) && !showShiny;
 
-  document.getElementById('modal-artwork').src = SPRITE_OFFICIAL(id);
-  document.getElementById('modal-artwork').alt = name;
-  document.getElementById('modal-name').textContent = displayName(name);
+  activeDexId = id;
+  modalShiny = showShiny;
+  document.getElementById('modal-artwork').alt = locked ? 'Unknown' : name;
+  document.getElementById('modal-artwork').classList.toggle('silhouette', locked);
+  document.getElementById('modal-locked').style.display = locked ? '' : 'none';
+  document.getElementById('modal-shiny-locked').style.display = (!locked && shinyLocked) ? '' : 'none';
+  document.getElementById('modal-shiny-btn').style.display = (locked || shinyLocked) ? 'none' : '';
+  document.getElementById('modal-tabs').style.display = locked ? 'none' : '';
+  updateModalArtwork();
+  document.getElementById('modal-name').textContent = locked ? '???' : displayName(name);
   document.getElementById('modal-id').textContent = '#' + String(id).padStart(3, '0');
 
   const typesEl = document.getElementById('modal-types');
   typesEl.innerHTML = '';
+  if (locked) {
+    modal.classList.add('open');
+    document.getElementById('modal-tab-weaknesses').style.display = 'none';
+    document.getElementById('modal-tab-stats').style.display = 'none';
+    return;
+  }
   typeStr.split('/').forEach(t => {
     const span = document.createElement('span');
     span.className = 'type-badge type-' + t.toLowerCase();
@@ -515,7 +640,6 @@ function openDexModal(id, name) {
   document.getElementById('modal-cry-btn').onclick = () => playCry(id);
 
   modal.classList.add('open');
-  activeDexId = id;
 
   fetchStats(id).then(stats => {
     if (activeDexId !== id) return;
@@ -600,12 +724,24 @@ function buildPokedex() {
     card.className = 'dex-card';
     card.dataset.types = typeStr;
     card.dataset.nameLower = name.toLowerCase();
+    card.dataset.id = id;
+    card.dataset.name = name;
     card.title = displayName(name);
 
     const img = document.createElement('img');
     img.src = SPRITE_URL(id);
     img.alt = name;
     img.loading = 'lazy';
+
+    const mark = document.createElement('span');
+    mark.className = 'dex-shiny-mark';
+    mark.textContent = '✨';
+    mark.title = 'Shiny registered';
+
+    const check = document.createElement('span');
+    check.className = 'dex-caught-mark';
+    check.textContent = '✓';
+    check.title = 'Correctly named';
 
     const nameEl = document.createElement('div');
     nameEl.className = 'dex-card-name';
@@ -625,12 +761,30 @@ function buildPokedex() {
     });
 
     card.appendChild(img);
+    card.appendChild(mark);
+    card.appendChild(check);
     card.appendChild(nameEl);
     card.appendChild(idEl);
     card.appendChild(typeEl);
     card.addEventListener('click', () => openDexModal(id, name));
     grid.appendChild(card);
   });
+}
+
+function refreshDexMarks() {
+  document.querySelectorAll('#pokedex-grid .dex-card').forEach(card => {
+    const cardId = parseInt(card.dataset.id, 10);
+    const hidden = isHidden(cardId);
+    card.classList.toggle('unseen', hidden);
+    card.classList.toggle('has-shiny', !hidden && shinyDex.has(cardId));
+    card.classList.toggle('caught', !hidden && caughtDex.has(cardId));
+    const label = hidden ? '???' : displayName(card.dataset.name);
+    card.querySelector('.dex-card-name').textContent = label;
+    card.title = label;
+  });
+  document.getElementById('dex-progress').textContent =
+    '👁 ' + seenDex.size + ' / ' + POKEMON.length + ' seen  ·  ✓ ' +
+    caughtDex.size + ' named  ·  ✨ ' + shinyDex.size + ' shiny';
 }
 
 let dexFilterType = 'all';
@@ -645,14 +799,17 @@ function applyDexFilter(filter, clickedBtn) {
 function applyDexSearch() {
   const query = (document.getElementById('dex-search').value || '').toLowerCase().trim();
   document.querySelectorAll('#pokedex-grid .dex-card').forEach(card => {
-    const typeMatch = dexFilterType === 'all' || card.dataset.types.includes(dexFilterType);
-    const nameMatch = !query || card.dataset.nameLower.includes(query);
+    // Unseen entries must not be findable by name or type, or discovery mode leaks answers.
+    const unseen = card.classList.contains('unseen');
+    const typeMatch = dexFilterType === 'all' || (!unseen && card.dataset.types.includes(dexFilterType));
+    const nameMatch = !query || (!unseen && card.dataset.nameLower.includes(query));
     card.style.display = (typeMatch && nameMatch) ? '' : 'none';
   });
 }
 
 // ── Type Quiz
 function startTypeQuiz() {
+  tqClearPending();
   const all = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 })));
   tqQueue = all.slice(0, tqTotal);
   tqScore = 0; tqCorrect = 0; tqRoundActive = false; tqReview = [];
@@ -677,6 +834,7 @@ function nextTypeRound() {
   if (tqQueue.length === 0) { endTypeQuiz(); return; }
   tqCurrent = tqQueue.pop();
   tqRoundActive = true;
+  registerSeen(tqCurrent.id);
 
   const tqImg = document.getElementById('tq-img');
   tqImg.style.opacity = '0';
@@ -751,8 +909,8 @@ function nextTypeRound() {
       }
       document.getElementById('tq-score-val').textContent = tqScore;
       tqReview.push({ id: tqCurrent.id, name: tqCurrent.name, typeStr: typeStr, questionWasWeakness: tqRoundIsWeakness, correctType: correctType, playerChoice: opt, wasCorrect: isRight });
-      if (speechEnabled) playCry(tqCurrent.id);
-      setTimeout(() => nextTypeRound(), 2500);
+      playCry(tqCurrent.id);
+      tqSchedule(nextTypeRound, 2500);
     });
     container.appendChild(btn);
   });
@@ -762,20 +920,27 @@ function toggleTqPause() {
   const overlay = document.getElementById('tq-pause-overlay');
   if (overlay.classList.contains('active')) {
     overlay.classList.remove('active');
-    tqRoundActive = true;
+    tqRoundActive = tqPausedRoundActive;
+    if (tqPendingAction) {
+      tqAdvanceTimeout = setTimeout(() => { const fn = tqPendingAction; tqPendingAction = null; fn(); }, tqPendingDelay);
+    }
   } else {
     overlay.classList.add('active');
+    tqPausedRoundActive = tqRoundActive;
     tqRoundActive = false;
+    clearTimeout(tqAdvanceTimeout);
   }
 }
 
 function tqGoToMainMenu() {
+  tqClearPending();
   tqRoundActive = false;
   document.getElementById('tq-pause-overlay').classList.remove('active');
   showScreen('hub-screen');
 }
 
 function endTypeQuiz() {
+  tqClearPending();
   const accuracy = Math.round(tqCorrect / tqTotal * 100);
   document.getElementById('tqe-score').textContent = tqScore;
   document.getElementById('tqe-correct').textContent = tqCorrect + ' / ' + tqTotal;
@@ -858,13 +1023,13 @@ function renderTqReview() {
 
 // ── Event listeners
 document.getElementById('hub-game-btn').addEventListener('click', () => showScreen('game-settings-screen'));
-document.getElementById('hub-dex-btn').addEventListener('click', () => { buildPokedex(); showScreen('pokedex-screen'); });
+document.getElementById('hub-dex-btn').addEventListener('click', () => { buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
 document.getElementById('hub-typequiz-btn').addEventListener('click', () => showScreen('tq-settings-screen'));
 
 document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => {
   gameMode = b.dataset.mode;
   document.querySelectorAll('.mode-btn').forEach(x => x.classList.toggle('selected', x === b));
-  document.getElementById('rounds-section').style.display = gameMode === 'timeattack' ? 'none' : '';
+  document.getElementById('rounds-section').style.display = gameMode === 'normal' ? '' : 'none';
 }));
 
 document.querySelectorAll('.diff-btn').forEach(b => b.addEventListener('click', () => {
@@ -892,7 +1057,21 @@ document.getElementById('main-menu-btn').addEventListener('click', () => showScr
 document.getElementById('dex-back-btn').addEventListener('click', () => showScreen('hub-screen'));
 document.getElementById('dex-search').addEventListener('input', applyDexSearch);
 
+document.getElementById('dex-help-btn').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.add('open');
+});
+document.getElementById('help-modal-close').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.remove('open');
+});
+document.getElementById('help-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('help-modal')) e.currentTarget.classList.remove('open');
+});
+
 document.getElementById('dex-modal-close').addEventListener('click', closeDexModal);
+document.getElementById('modal-shiny-btn').addEventListener('click', () => {
+  modalShiny = !modalShiny;
+  updateModalArtwork();
+});
 document.getElementById('dex-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('dex-modal')) closeDexModal();
 });
@@ -907,8 +1086,78 @@ document.getElementById('tq-settings-back-btn').addEventListener('click', () => 
 document.getElementById('tqe-play-again-btn').addEventListener('click', startTypeQuiz);
 document.getElementById('tqe-menu-btn').addEventListener('click', () => showScreen('hub-screen'));
 
-document.getElementById('mute-btn').addEventListener('click', () => {
-  speechEnabled = !speechEnabled;
-  document.getElementById('mute-btn').textContent = speechEnabled ? 'sound on' : 'sound off';
-  if (!speechEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+// ── Site-wide settings
+const AUDIO_TOGGLES = [
+  { id: 'set-sound', key: 'sound' },
+  { id: 'set-voice', key: 'voice' },
+  { id: 'set-cries', key: 'cries' },
+];
+
+function syncAudioToggles() {
+  AUDIO_TOGGLES.forEach(({ id, key }) => {
+    const btn = document.getElementById(id);
+    const on = !!audioSettings[key];
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (key !== 'sound') btn.disabled = !audioSettings.sound;
+  });
+  document.getElementById('audio-suboptions').classList.toggle('disabled', !audioSettings.sound);
+  const sel = document.getElementById('set-voice-select');
+  sel.disabled = !audioSettings.sound || !audioSettings.voice;
+  document.getElementById('voice-test-btn').disabled = sel.disabled;
+}
+
+// Called by audio.js whenever the platform voice list resolves (Android populates it late).
+function onVoicesLoaded() {
+  const sel = document.getElementById('set-voice-select');
+  if (!sel) return;
+  const list = englishVoices().length ? englishVoices() : voices;
+  const auto = pickVoice();
+  sel.innerHTML = '';
+  const autoOpt = document.createElement('option');
+  autoOpt.value = '';
+  autoOpt.textContent = auto ? `Auto (${auto.name})` : 'Auto';
+  sel.appendChild(autoOpt);
+  list.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voiceURI;
+    opt.textContent = `${v.name} — ${v.lang}`;
+    sel.appendChild(opt);
+  });
+  sel.value = list.some(v => v.voiceURI === audioSettings.voiceURI) ? audioSettings.voiceURI : '';
+}
+
+AUDIO_TOGGLES.forEach(({ id, key }) => {
+  document.getElementById(id).addEventListener('click', () => {
+    audioSettings[key] = !audioSettings[key];
+    saveAudioSettings();
+    if (!audioSettings.sound && window.speechSynthesis) window.speechSynthesis.cancel();
+    syncAudioToggles();
+  });
 });
+
+document.getElementById('set-voice-select').addEventListener('change', e => {
+  audioSettings.voiceURI = e.target.value;
+  saveAudioSettings();
+});
+document.getElementById('voice-test-btn').addEventListener('click', () => speak("Who's that Pokémon!", 0.78, 0.78));
+
+const discoveryBtn = document.getElementById('set-discovery');
+function syncDiscoveryToggle() {
+  discoveryBtn.classList.toggle('on', dexSettings.discovery);
+  discoveryBtn.setAttribute('aria-checked', dexSettings.discovery ? 'true' : 'false');
+}
+discoveryBtn.addEventListener('click', () => {
+  dexSettings.discovery = !dexSettings.discovery;
+  saveDexSettings();
+  syncDiscoveryToggle();
+  refreshDexMarks();
+  applyDexSearch();
+});
+syncDiscoveryToggle();
+
+onVoicesLoaded();
+syncAudioToggles();
+
+document.getElementById('hub-settings-btn').addEventListener('click', () => showScreen('settings-screen'));
+document.getElementById('global-settings-back-btn').addEventListener('click', () => showScreen('hub-screen'));
