@@ -117,7 +117,7 @@ const ALIASES = {
 const DIFF = {
   easy:   { timer: 15, hintCost: 0  },
   normal: { timer: 10, hintCost: 5  },
-  hard:   { timer: 8,  hintCost: 10 },
+  hard:   { timer: 6,  hintCost: 10 },
 };
 
 const SPRITE_URL      = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;

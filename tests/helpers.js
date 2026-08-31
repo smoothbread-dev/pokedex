@@ -23,6 +23,7 @@ const LS_KEYS = [
   'wtp_caught_dex',
   'wtp_shiny_dex',
   'wtp_dex_settings',
+  'wtp_items',
   'pokedex_audio_settings',
 ];
 
@@ -88,20 +89,14 @@ function currentPokemon(page) {
   return page.evaluate(() => ({ id: current.id, name: current.name, display: displayName(current.name) }));
 }
 
-/** Answers the current round. Works in both choice and typed modes. */
+/** Answers the current round by clicking a choice button. */
 async function answer(page, { correct = true } = {}) {
   await page.evaluate(right => {
     const target = displayName(current.name);
-    if (difficulty === 'hard') {
-      const input = document.getElementById('answer-input');
-      input.value = right ? current.name : 'definitely-not-a-pokemon';
-      submitAnswer();
-      return;
-    }
     const buttons = [...document.querySelectorAll('#choices .choice-btn')];
     const btn = right
       ? buttons.find(b => b.textContent === target)
-      : buttons.find(b => b.textContent !== target);
+      : buttons.find(b => b.textContent !== target && !b.disabled);
     btn.click();
   }, correct);
 }

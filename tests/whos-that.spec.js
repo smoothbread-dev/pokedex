@@ -76,26 +76,34 @@ test.describe('hints', () => {
 });
 
 test.describe('hard difficulty', () => {
-  test('uses the typed input instead of choices', async ({ page }) => {
+  test('shows four choice buttons instead of typed input', async ({ page }) => {
     await startWhosThat(page, { difficulty: 'hard', rounds: 10 });
-    await expect(page.locator('#type-area')).toBeVisible();
-    await expect(page.locator('#choices')).toBeHidden();
+    await expect(page.locator('#choices')).toBeVisible();
+    await expect(page.locator('#type-area')).toBeHidden();
+    await expect(page.locator('#choices .choice-btn')).toHaveCount(4);
   });
 
-  test('accepts an alternate spelling', async ({ page }) => {
+  test('a correct button click awards points', async ({ page }) => {
     await startWhosThat(page, { difficulty: 'hard', rounds: 10 });
-    // Force a Pokémon with known aliases, then answer with one of them.
-    await page.evaluate(() => { current = { name: 'mr-mime', id: 122 }; });
-    await page.fill('#answer-input', 'mr. mime');
-    await page.click('#submit-btn');
-    await expect(page.locator('#feedback')).toHaveClass(/correct/);
+    const scoreBefore = await page.evaluate(() => score);
+    await answer(page, { correct: true });
+    expect(await page.evaluate(() => score)).toBeGreaterThan(scoreBefore);
   });
 
-  test('rejects an empty submission', async ({ page }) => {
+  test('a wrong button goes red and the correct one goes green', async ({ page }) => {
     await startWhosThat(page, { difficulty: 'hard', rounds: 10 });
-    await page.fill('#answer-input', '   ');
-    await page.click('#submit-btn');
-    expect(await page.evaluate(() => roundActive)).toBe(true);
+    await answer(page, { correct: false });
+    await expect(page.locator('#choices .correct-ans')).toHaveCount(1);
+    await expect(page.locator('#choices .wrong-ans')).toHaveCount(1);
+  });
+
+  test('the hint eliminates one wrong option without removing the answer', async ({ page }) => {
+    await startWhosThat(page, { difficulty: 'hard', rounds: 10 });
+    const target = await currentPokemon(page);
+    await page.click('#hint-btn');
+    await expect(page.locator('#choices .eliminated')).toHaveCount(1);
+    const elimText = await page.locator('#choices .eliminated').textContent();
+    expect(elimText.trim()).not.toBe(target.display);
   });
 });
 

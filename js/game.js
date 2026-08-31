@@ -12,9 +12,25 @@ const LS_KEY = 'wtp_best_score';
 let allTimeBest = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
 document.getElementById('best-val').textContent = allTimeBest;
 
+// ── Items
+const ITEMS_LS_KEY = 'wtp_items';
+const ITEM_CAP = 3;
+let items = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
+try { Object.assign(items, JSON.parse(localStorage.getItem(ITEMS_LS_KEY) || '{}')); } catch (e) {}
+let activeItem = null;
+
+function saveItems() {
+  try { localStorage.setItem(ITEMS_LS_KEY, JSON.stringify(items)); } catch (e) {}
+}
+
+const ITEM_META = {
+  unseen_lure:   { icon: '🔭', name: 'Unseen Lure',   desc: '60% of rounds will be Pokémon you haven\'t seen yet' },
+  uncaught_lure: { icon: '🎣', name: 'Uncaught Lure', desc: '60% of rounds will be Pokémon you haven\'t caught yet' },
+  shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game' },
+};
+
 // ── Shiny dex
 const SHINY_LS_KEY = 'wtp_shiny_dex';
-const SHINY_RATE = 1 / 128;
 let shinyDex = new Set();
 try { shinyDex = new Set(JSON.parse(localStorage.getItem(SHINY_LS_KEY) || '[]')); } catch (e) {}
 let currentShiny = false;
@@ -131,9 +147,20 @@ function useHint() {
   hintUsed = true;
   const cost = DIFF[difficulty].hintCost;
   if (cost > 0) { score -= cost; updateStats(); }
-  const type   = TYPES[current.id - 1] || '?';
-  const letter = displayName(current.name)[0].toUpperCase();
-  document.getElementById('hint-text').textContent = 'Type: ' + type + '  |  First letter: ' + letter;
+  if (difficulty === 'hard') {
+    const container = document.getElementById('choices');
+    const wrong = [...container.querySelectorAll('.choice-btn')]
+      .filter(b => b.textContent !== displayName(current.name) && !b.disabled);
+    if (wrong.length) {
+      const target = wrong[Math.floor(Math.random() * wrong.length)];
+      target.disabled = true;
+      target.classList.add('eliminated');
+    }
+  } else {
+    const type   = TYPES[current.id - 1] || '?';
+    const letter = displayName(current.name)[0].toUpperCase();
+    document.getElementById('hint-text').textContent = 'Type: ' + type + '  |  First letter: ' + letter;
+  }
   const btn = document.getElementById('hint-btn');
   btn.disabled = true;
   btn.textContent = cost === 0 ? 'Hint used' : 'Hint used (-' + cost + ' pts)';
@@ -184,13 +211,90 @@ function clearPending() {
   pendingDeadline = 0;
 }
 
+function getShinyRate() {
+  if (activeItem === 'shiny_charm') return 1 / 32;
+  return 1 / 128;
+}
+
+function buildQueue(count) {
+  const all = POKEMON.map((name, i) => ({ name, id: i + 1 }));
+  if (activeItem === 'unseen_lure' || activeItem === 'uncaught_lure') {
+    const dex = activeItem === 'unseen_lure' ? seenDex : caughtDex;
+    const priority = shuffle(all.filter(p => !dex.has(p.id)));
+    const rest     = shuffle(all.filter(p =>  dex.has(p.id)));
+    const n = Math.min(priority.length, Math.floor(count * 0.6));
+    return shuffle([...priority.slice(0, n), ...rest.slice(0, count - n)]);
+  }
+  return shuffle(all).slice(0, count);
+}
+
+function renderActiveItemRow() {
+  const row = document.getElementById('active-item-row');
+  if (!row) return;
+  if (activeItem) {
+    const meta = ITEM_META[activeItem];
+    row.textContent = meta.icon + ' ' + meta.name + ' equipped';
+  } else {
+    row.innerHTML = 'None — <button id="go-to-items-btn" class="link-btn">choose in Item Bag →</button>';
+    const goBtn = document.getElementById('go-to-items-btn');
+    if (goBtn) goBtn.addEventListener('click', () => showScreen('items-screen'));
+  }
+}
+
+function setActiveItem(id) {
+  activeItem = activeItem === id ? null : id;
+  renderItemsScreen();
+  renderActiveItemRow();
+}
+
+function renderItemsScreen() {
+  const list = document.getElementById('items-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Object.entries(ITEM_META).forEach(([id, meta]) => {
+    const count = items[id] || 0;
+    const isEquipped = activeItem === id;
+    const row = document.createElement('div');
+    row.className = 'item-row' + (isEquipped ? ' equipped' : '');
+    const equip = document.createElement('button');
+    equip.className = 'equip-btn' + (isEquipped ? ' equipped' : '');
+    equip.textContent = isEquipped ? 'Unequip' : 'Equip';
+    if (count === 0 && !isEquipped) equip.disabled = true;
+    equip.addEventListener('click', () => setActiveItem(id));
+    row.innerHTML = `
+      <div class="item-icon">${meta.icon}</div>
+      <div class="item-info">
+        <div class="item-name">${meta.name}</div>
+        <div class="item-desc">${meta.desc}</div>
+      </div>
+      <div class="item-count">×${count}</div>
+    `;
+    row.appendChild(equip);
+    list.appendChild(row);
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 3000);
+}
+
 function startGame() {
   score = 0; streak = 0; bestStreak = 0; correct = 0; answered = 0; paused = false;
   missedPokemon = [];
   timerSecs = DIFF[difficulty].timer;
   clearPending();
 
-  queue = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 }))).slice(0, roundCount);
+  if (activeItem && (items[activeItem] || 0) > 0) {
+    items[activeItem] = Math.max(0, items[activeItem] - 1);
+    saveItems();
+  } else {
+    activeItem = null;
+  }
+  queue = buildQueue(roundCount);
 
   updateStats();
   showScreen('game-screen');
@@ -206,7 +310,7 @@ function nextRound() {
   roundActive = true;
   paused = false;
   hintUsed = false;
-  currentShiny = Math.random() < SHINY_RATE;
+  currentShiny = Math.random() < getShinyRate();
   document.getElementById('shiny-badge').style.display = 'none';
 
   const sil = document.getElementById('pokemon-sil');
@@ -244,20 +348,13 @@ function nextRound() {
     hintText.textContent = '';
   }
 
+  document.getElementById('type-area').style.display = 'none';
   if (difficulty === 'hard') {
-    document.getElementById('type-area').style.display = 'flex';
-    document.getElementById('choices').style.display = 'none';
-    document.getElementById('choices').innerHTML = '';
-    const input = document.getElementById('answer-input');
-    input.value = '';
-    input.disabled = false;
-    document.getElementById('submit-btn').disabled = false;
-    setTimeout(() => input.focus(), 50);
+    buildHardChoices();
   } else {
-    document.getElementById('type-area').style.display = 'none';
     buildChoices();
-    document.getElementById('choices').style.display = 'grid';
   }
+  document.getElementById('choices').style.display = 'grid';
 
   startTimer();
   setTimeout(() => announceQuestion(), 150);
@@ -314,6 +411,7 @@ function goToMainMenu() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   paused = false;
   roundActive = false;
+  activeItem = null;
   document.getElementById('pause-overlay').classList.remove('active');
   showScreen('hub-screen');
 }
@@ -346,6 +444,40 @@ function buildChoices() {
         else if (b === btn && !isRight) b.classList.add('wrong-ans');
       });
       revealAnswer(isRight, displayName(name));
+    });
+    container.appendChild(btn);
+  });
+}
+
+function pickDistractors(correctId) {
+  const primaryType = (TYPES[correctId - 1] || '').split('/')[0];
+  const all = shuffle(
+    POKEMON.map((name, i) => ({ name, id: i + 1 })).filter(p => p.id !== correctId)
+  );
+  const sameType = all.filter(p => (TYPES[p.id - 1] || '').startsWith(primaryType));
+  const others   = all.filter(p => !(TYPES[p.id - 1] || '').startsWith(primaryType));
+  return [...sameType, ...others].slice(0, 3);
+}
+
+function buildHardChoices() {
+  const distractors = pickDistractors(current.id);
+  const options = shuffle([{ name: current.name, id: current.id }, ...distractors]);
+  const container = document.getElementById('choices');
+  container.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = displayName(opt.name);
+    btn.addEventListener('click', () => {
+      if (!roundActive || paused) return;
+      clearInterval(timerInterval);
+      const isRight = opt.id === current.id;
+      container.querySelectorAll('.choice-btn').forEach(b => {
+        b.disabled = true;
+        if (b.textContent === displayName(current.name)) b.classList.add('correct-ans');
+        else if (b === btn && !isRight) b.classList.add('wrong-ans');
+      });
+      revealAnswer(isRight, displayName(opt.name));
     });
     container.appendChild(btn);
   });
@@ -422,6 +554,7 @@ function endGame() {
   document.getElementById('end-best').textContent =
     allTimeBest + (isNewBest && score > 0 ? '  New best!' : '');
 
+  activeItem = null;
   renderMissedGrid();
   showScreen('end-screen');
 }
@@ -968,9 +1101,11 @@ function renderTqReview() {
 }
 
 // ── Event listeners
-document.getElementById('hub-game-btn').addEventListener('click', () => showScreen('game-settings-screen'));
+document.getElementById('hub-game-btn').addEventListener('click', () => { renderActiveItemRow(); showScreen('game-settings-screen'); });
 document.getElementById('hub-dex-btn').addEventListener('click', () => { buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
 document.getElementById('hub-typequiz-btn').addEventListener('click', () => showScreen('tq-settings-screen'));
+document.getElementById('hub-items-btn').addEventListener('click', () => { renderItemsScreen(); showScreen('items-screen'); });
+document.getElementById('items-back-btn').addEventListener('click', () => showScreen('hub-screen'));
 
 document.querySelectorAll('.diff-btn').forEach(b => b.addEventListener('click', () => {
   difficulty = b.dataset.diff;

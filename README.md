@@ -8,7 +8,7 @@ Open `index.html` in any modern browser — no server, build step, or installati
 
 ## Contents
 
-The hub screen has four sections:
+The hub screen has five sections:
 
 | Section | What it is |
 |---------|-----------|
@@ -16,6 +16,7 @@ The hub screen has four sections:
 | **Type Quiz** | Guess each Pokémon's type or its weaknesses |
 | **Pokédex** | Browse all 151, filter/search, view stats and weaknesses |
 | **Settings** | Site-wide audio and Pokédex options |
+| **Item Bag** | Manage consumable items that modify your next game |
 
 ## Who's That Pokémon?
 
@@ -24,8 +25,8 @@ The hub screen has four sections:
 | Difficulty | Timer | Answering | Hint cost |
 |------------|-------|-----------|-----------|
 | Easy | 15s | Multiple choice | Free (first letter always shown) |
-| Normal | 10s | Multiple choice | 5 pts |
-| Hard | 8s | Type the name | 10 pts |
+| Normal | 10s | Multiple choice | −5 pts |
+| Hard | 6s | 4-choice buttons | Eliminates 1 wrong option (−10 pts) |
 
 **Scoring**
 
@@ -55,7 +56,19 @@ Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. The results scre
 
 ## Shiny Encounters
 
-Each round of Who's That Pokémon has a **1/128** chance of showing a shiny. The silhouette hides it, so it's a surprise on reveal — a glowing `✨ SHINY` badge appears over the artwork. Naming it correctly registers it to your shiny Pokédex.
+Each round of Who's That Pokémon has a **1/128** base chance of showing a shiny. The Shiny Charm item raises it to **1/32** for one game. The silhouette hides it, so it's a surprise on reveal — a glowing `✨ SHINY` badge appears over the artwork. Naming it correctly registers it to your shiny Pokédex.
+
+## Items
+
+The Item Bag holds up to three of each consumable. One item can be equipped before starting a game; it is consumed (count −1) when the game begins and its effect lasts the whole game.
+
+| Item | Effect |
+|------|--------|
+| **Unseen Lure** | 60% of rounds will be Pokémon you haven't seen yet |
+| **Uncaught Lure** | 60% of rounds will be Pokémon you haven't caught yet |
+| **Shiny Charm** | Shiny rate → 1/32 for that game |
+
+Items are stored in `localStorage` under `wtp_items`. Item drops are not implemented yet — inventory must be seeded directly in localStorage for now.
 
 ## Progress Tracking
 
@@ -66,6 +79,7 @@ Three sets are tracked and persisted in `localStorage`:
 | `wtp_seen_dex` | Pokémon that have appeared in any round | Entry unlocked in the Pokédex |
 | `wtp_caught_dex` | Pokémon you've correctly named at least once | Green ✓ on the Pokédex card |
 | `wtp_shiny_dex` | Shinies you've encountered and named | Gold border + ✨ on the card |
+| `wtp_items` | Consumable item counts | Item Bag screen |
 
 **Seen vs named** — seen means the Pokémon has been in front of you, which unlocks its entry. Named means you actually got the answer right in Who's That Pokémon.
 
@@ -141,6 +155,7 @@ Spec layout:
 | `tests/pokedex.spec.js` | Grid, search, filters, detail modal, discovery and shiny gating, help |
 | `tests/tracking.spec.js` | Seen / named / shiny registration, marks and persistence |
 | `tests/settings.spec.js` | Audio toggles, announcer voice, discovery mode |
+| `tests/items.spec.js` | Item screen navigation, equip/unequip, consumption on game start, shiny rate |
 
 Helpers live in `tests/helpers.js`. `openApp(page, storage)` seeds `localStorage` before the app boots, which is how tests set up a given Pokédex state without playing through it.
 
