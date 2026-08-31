@@ -24,6 +24,7 @@ const LS_KEYS = [
   'wtp_shiny_dex',
   'wtp_dex_settings',
   'wtp_items',
+  'wtp_completion_badges',
   'pokedex_audio_settings',
 ];
 

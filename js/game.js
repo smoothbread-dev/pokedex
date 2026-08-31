@@ -29,6 +29,11 @@ const ITEM_META = {
   shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game' },
 };
 
+// ── Completion badges
+const BADGES_LS_KEY = 'wtp_completion_badges';
+let completionBadges = {};
+try { completionBadges = JSON.parse(localStorage.getItem(BADGES_LS_KEY) || '{}'); } catch (e) {}
+
 // ── Shiny dex
 const SHINY_LS_KEY = 'wtp_shiny_dex';
 let shinyDex = new Set();
@@ -213,7 +218,18 @@ function clearPending() {
 
 function getShinyRate() {
   if (activeItem === 'shiny_charm') return 1 / 32;
+  if (completionBadges.gen1) return 1 / 64;
   return 1 / 128;
+}
+
+function checkCompletionBadge(silent) {
+  if (completionBadges.gen1) return;
+  const allCaught = POKEMON.every((_, i) => caughtDex.has(i + 1));
+  if (!allCaught) return;
+  completionBadges.gen1 = true;
+  try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
+  if (!silent) showToast('🏆 Gen I badge earned! Shiny rate → 1/64 permanently.');
+  renderItemsScreen();
 }
 
 function buildQueue(count) {
@@ -272,6 +288,17 @@ function renderItemsScreen() {
     row.appendChild(equip);
     list.appendChild(row);
   });
+
+  const badgeEl = document.getElementById('badge-gen1');
+  if (badgeEl) {
+    if (completionBadges.gen1) {
+      badgeEl.className = 'badge-earned';
+      badgeEl.innerHTML = '🏆 Gen I — Pokémon Master<br><small>Shiny rate: 1/64 permanently</small>';
+    } else {
+      badgeEl.className = 'badge-placeholder';
+      badgeEl.textContent = 'Catch all 151 Pokémon to earn the Gen I badge';
+    }
+  }
 }
 
 function showToast(msg) {
@@ -554,6 +581,7 @@ function endGame() {
   document.getElementById('end-best').textContent =
     allTimeBest + (isNewBest && score > 0 ? '  New best!' : '');
 
+  checkCompletionBadge();
   activeItem = null;
   renderMissedGrid();
   showScreen('end-screen');
@@ -1233,6 +1261,9 @@ syncDiscoveryToggle();
 
 onVoicesLoaded();
 syncAudioToggles();
+
+// Retroactive badge award for players who caught all 151 before this feature shipped.
+checkCompletionBadge(true);
 
 document.getElementById('hub-settings-btn').addEventListener('click', () => showScreen('settings-screen'));
 document.getElementById('global-settings-back-btn').addEventListener('click', () => showScreen('hub-screen'));

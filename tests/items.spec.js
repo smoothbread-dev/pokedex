@@ -115,3 +115,72 @@ test.describe('shiny rate', () => {
     expect(rate).toBeCloseTo(1 / 128);
   });
 });
+
+test.describe('completion badge', () => {
+  const allIds = Array.from({ length: 151 }, (_, i) => i + 1);
+
+  test('badge not awarded when fewer than 151 caught', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds.slice(0, 150)),
+    });
+    const badges = JSON.parse(await page.evaluate(() => localStorage.getItem('wtp_completion_badges') || '{}'));
+    expect(badges.gen1).toBeFalsy();
+  });
+
+  test('badge awarded retroactively at init when all 151 are caught', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds),
+    });
+    const badges = JSON.parse(await page.evaluate(() => localStorage.getItem('wtp_completion_badges') || '{}'));
+    expect(badges.gen1).toBe(true);
+  });
+
+  test('getShinyRate returns 1/64 when badge is earned with no active item', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds),
+    });
+    const rate = await page.evaluate(() => getShinyRate());
+    expect(rate).toBeCloseTo(1 / 64);
+  });
+
+  test('shiny charm overrides badge rate to 1/32', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds),
+      wtp_items: JSON.stringify({ unseen_lure: 0, uncaught_lure: 0, shiny_charm: 1 }),
+    });
+    await page.click('#hub-items-btn');
+    await page.locator('.equip-btn').nth(2).click();
+    await page.click('#items-back-btn');
+    await startWhosThat(page, { rounds: 10 });
+    const rate = await page.evaluate(() => getShinyRate());
+    expect(rate).toBeCloseTo(1 / 32);
+  });
+
+  test('badge awarded via checkCompletionBadge after final catch', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds.slice(0, 150)),
+    });
+    await page.evaluate(() => {
+      caughtDex.add(151);
+      localStorage.setItem('wtp_caught_dex', JSON.stringify([...caughtDex]));
+      checkCompletionBadge();
+    });
+    const badges = JSON.parse(await page.evaluate(() => localStorage.getItem('wtp_completion_badges') || '{}'));
+    expect(badges.gen1).toBe(true);
+  });
+
+  test('badge section shows earned state in items screen', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(allIds),
+    });
+    await page.click('#hub-items-btn');
+    await expect(page.locator('.badge-earned')).toBeVisible();
+  });
+
+  test('badge section shows placeholder when not earned', async ({ page }) => {
+    await openApp(page);
+    await page.click('#hub-items-btn');
+    await expect(page.locator('.badge-placeholder')).toBeVisible();
+    await expect(page.locator('.badge-earned')).toHaveCount(0);
+  });
+});

@@ -4,28 +4,6 @@ Ideas not built yet. Remove or rewrite entries as they ship.
 
 Features are ordered by dependency — each chunk can be built and tested independently before the next begins.
 
-## Chunk 3 — Completion Badge
-
-**Depends on: Chunk 2 (items infrastructure, `getShinyRate`).**
-
-Awarded when all 151 Pokémon IDs for the active gen are present in `wtp_caught_dex`. Permanently sets shiny rate to 1/64 for that gen (between base 1/128 and Shiny Charm 1/32).
-
-### Storage
-- `wtp_completion_badges` — `{ gen1: true }` (keyed per gen for Gen 2/3 readiness)
-
-### Shiny rate hierarchy (full picture)
-- Base: 1/128
-- Gen badge (permanent): 1/64
-- Shiny Charm active (one game): 1/32 — overrides badge, does not stack
-
-### Logic
-- `checkCompletionBadge()` — called in `endGame()` after `registerCaught`, and once at init for retroactive award
-- Badge displayed in the items screen (gold border, glow)
-
-**Files:** `js/game.js`, `index.html` (badge row in items screen), `tests/items.spec.js` (seed all 151 IDs, verify badge awarded and rate changes).
-
----
-
 ## Chunk 4 — Item Drops
 
 **Depends on: Chunk 2 (item inventory). Chunk 3 not required.**

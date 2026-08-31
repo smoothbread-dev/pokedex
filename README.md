@@ -56,7 +56,15 @@ Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. The results scre
 
 ## Shiny Encounters
 
-Each round of Who's That Pokémon has a **1/128** base chance of showing a shiny. The Shiny Charm item raises it to **1/32** for one game. The silhouette hides it, so it's a surprise on reveal — a glowing `✨ SHINY` badge appears over the artwork. Naming it correctly registers it to your shiny Pokédex.
+Each round of Who's That Pokémon has a **1/128** base chance of showing a shiny. The silhouette hides it, so it's a surprise on reveal — a glowing `✨ SHINY` badge appears over the artwork. Naming it correctly registers it to your shiny Pokédex.
+
+Shiny rate tiers (highest active rate wins):
+
+| Condition | Rate |
+|---|---|
+| Base | 1/128 |
+| Gen I Completion Badge earned (permanent) | 1/64 |
+| Shiny Charm active (one game) | 1/32 |
 
 ## Items
 
@@ -80,6 +88,7 @@ Three sets are tracked and persisted in `localStorage`:
 | `wtp_caught_dex` | Pokémon you've correctly named at least once | Green ✓ on the Pokédex card |
 | `wtp_shiny_dex` | Shinies you've encountered and named | Gold border + ✨ on the card |
 | `wtp_items` | Consumable item counts | Item Bag screen |
+| `wtp_completion_badges` | Per-gen completion flags | Gold badge in Item Bag |
 
 **Seen vs named** — seen means the Pokémon has been in front of you, which unlocks its entry. Named means you actually got the answer right in Who's That Pokémon.
 
