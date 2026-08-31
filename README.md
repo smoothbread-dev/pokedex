@@ -38,7 +38,7 @@ The hub screen has five sections:
 | Streak ×3 multiplier | at 10 correct in a row |
 | Wrong answer or timeout | 0, streak resets |
 
-Round count is 10 / 25 / 50 / All (151). Best score persists in `localStorage`. After an answer, the next round waits for the reveal announcement and the audible part of the Pokémon cry before advancing; trailing silence in cry files is capped. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
+Round count is 10 / 25 / 50. Best score persists in `localStorage`. After an answer, the next round waits for the reveal announcement and the audible part of the Pokémon cry before advancing; trailing silence in cry files is capped. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
 
 Alternate spellings are accepted (e.g. "Nidoran", "Farfetch'd", "Mr Mime").
 
