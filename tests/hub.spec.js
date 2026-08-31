@@ -33,3 +33,35 @@ for (const route of routes) {
     expect(await activeScreen(page)).toBe('hub-screen');
   });
 }
+
+test('difficulty help button opens and closes the info modal', async ({ page }) => {
+  await page.click('#hub-game-btn');
+  await page.click('#diff-help-btn');
+  await expect(page.locator('#diff-help-modal')).toHaveClass(/open/);
+  await page.click('#diff-help-modal-close');
+  await expect(page.locator('#diff-help-modal')).not.toHaveClass(/open/);
+});
+
+test('difficulty help modal closes on backdrop click', async ({ page }) => {
+  await page.click('#hub-game-btn');
+  await page.click('#diff-help-btn');
+  await expect(page.locator('#diff-help-modal')).toHaveClass(/open/);
+  await page.locator('#diff-help-modal').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('#diff-help-modal')).not.toHaveClass(/open/);
+});
+
+test('type quiz help button opens and closes the rewards modal', async ({ page }) => {
+  await page.click('#hub-typequiz-btn');
+  await page.click('#tq-help-btn');
+  await expect(page.locator('#tq-help-modal')).toHaveClass(/open/);
+  await page.click('#tq-help-modal-close');
+  await expect(page.locator('#tq-help-modal')).not.toHaveClass(/open/);
+});
+
+test('type quiz help modal closes on backdrop click', async ({ page }) => {
+  await page.click('#hub-typequiz-btn');
+  await page.click('#tq-help-btn');
+  await expect(page.locator('#tq-help-modal')).toHaveClass(/open/);
+  await page.locator('#tq-help-modal').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('#tq-help-modal')).not.toHaveClass(/open/);
+});

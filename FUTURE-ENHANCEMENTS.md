@@ -4,84 +4,6 @@ Ideas not built yet. Remove or rewrite entries as they ship.
 
 Features are ordered by dependency — each chunk can be built and tested independently before the next begins.
 
-## Chunk 4 — Item Drops
-
-**Depends on: Chunk 2 (item inventory). Chunk 3 not required.**
-
-Lures drop from Who's That; Shiny Charms drop from Type Quiz. Drops are shown on the end screen.
-
-### Who's That drops (lures only)
-| Difficulty | Drop |
-|---|---|
-| Easy | 1 lure |
-| Normal | 1 lure + 30% chance of a second |
-| Hard | 2 lures guaranteed |
-
-### Type Quiz drops (grade-gated)
-| Grade | Reward |
-|---|---|
-| S | 1 Shiny Charm (if below cap) |
-| A | 1 lure |
-| B / C | Nothing |
-
-### Pokémon of the Day double-drop
-A date-seeded featured Pokémon is shown on the hub daily (same one for all players). Correctly naming it in Who's That doubles the lure drop for that game.
-- `wtp_potd_claimed` — stores today's date string; prevents double-claiming
-- `getPokemonOfTheDay()` — hashes `new Date().toDateString()` to a POKEMON index
-- Hub shows the PotD silhouette with a label
-
-**Files:** `js/game.js` (`dropItems(mode, grade)` called from `endGame()` / `endTypeQuiz()`; `getPokemonOfTheDay()`; hub render), `index.html` (PotD hub slot, `wtp_potd_claimed`), `tests/helpers.js` (add `wtp_potd_claimed`).
-
----
-
-## Chunk 5 — Difficulty Help Button
-
-**Depends on: Chunk 1 (hard mode buttons), Chunk 4 (drop values to show).**
-
-Small `ℹ` icon button next to the "Difficulty" label on the game-settings screen. Opens a modal with two sections so players know exactly what each mode and difficulty gives them.
-
-**Per-difficulty table:**
-
-| | Easy | Normal | Hard |
-|---|---|---|---|
-| Answer method | Type name | Type name | 4-choice buttons |
-| Timer | 15 s | 10 s | 6 s |
-| Hint cost | Free | −5 pts | Eliminates 1 wrong (−10 pts) |
-| Item drops | 1 lure | 1–2 lures | 2 lures guaranteed |
-
-**Per game mode table:**
-
-| Mode | Reward |
-|---|---|
-| Who's That — any game | Lures (1 / 1–2 / 2 by difficulty) |
-| Type Quiz — Grade S | 1 Shiny Charm |
-| Type Quiz — Grade A | 1 lure |
-| Type Quiz — Grade B/C | Nothing |
-
-Modal uses existing dark card styles. Closes on backdrop click or close button.
-
-**Files:** `index.html` (ℹ button, modal markup + CSS), `js/game.js` (open/close listener).
-
----
-
-## Chunk 6 — Daily Engagement
-
-**Depends on: Chunk 4 (item drops, for streak milestone grants and PotD — PotD can ship with Chunk 4 itself; streak rewards need the drop pipeline).**
-
-### Play Streak
-`wtp_streak` — `{ count: 7, lastDate: "2026-08-31" }`. Displayed on hub as 🔥 N days.
-- Increments when a game completes on a new calendar day
-- Resets to 0 if a day is skipped
-- One-time milestone rewards: 3 days → +1 lure each, 7 days → +1 Shiny Charm, 14 days → full top-up
-- `updateStreak()` called at end of `endGame()` and `endTypeQuiz()`
-
-### Familiarity Bonus
-Naming an already-caught Pokémon correctly awards +5 pts, shown inline in round feedback (e.g. "+5 familiarity!"). No new storage — checks `caughtDex.has(current.id)` at answer time in `revealAnswer()`.
-
-**Files:** `js/game.js`, `index.html` (hub streak badge), `tests/helpers.js` (add `wtp_streak`).
-
----
-
 ## Chunk 7 — Tasks / Achievements
 
 **Depends on: Chunks 2–6 (hub card layout, streak, items all in place).**
@@ -265,6 +187,30 @@ After a game ends, `currentGen` stays as the player set it (don't reset). The pl
 4. Select Gen 2, start Type Quiz — only Johto Pokémon, Steel/Dark weakness answers correct
 5. Pokédex with Gen 2 active — 100 cards, IDs 152–251, progress counter says `/ 100`
 6. `npm test` — all tests pass
+
+---
+
+## Chunk 9 — Bag Size Scaling
+
+**Depends on: Chunk 8 (Gen 2 Unlock — gen completion badges must exist).**
+
+Item bag capacity increases as the player earns gen completion badges. Each badge adds +1 to the per-item cap, rewarding long-term progression.
+
+| Badges earned | Cap per item |
+|---|---|
+| 0 | 3 (base) |
+| 1 (Gen 1 complete) | 4 |
+| 2 (Gen 2 complete) | 5 |
+| N | 3 + N |
+
+### Implementation
+
+- Replace `const ITEM_CAP = 3` with a function: `function getItemCap() { return 3 + Object.keys(completionBadges).length; }`
+- Update all references from `ITEM_CAP` to `getItemCap()` (in `dropItems()`, item bag rendering, equip logic)
+- Item Bag screen shows current cap per item (e.g. "2 / 4")
+- No new localStorage keys — reads existing `wtp_completion_badges`
+
+**Files:** `js/game.js` (`getItemCap()`, update all `ITEM_CAP` refs), `index.html` (cap display in item bag), `README.md` (document scaling), `FUTURE-ENHANCEMENTS.md` (remove when shipped).
 
 ---
 

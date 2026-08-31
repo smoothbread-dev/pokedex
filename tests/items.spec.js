@@ -15,6 +15,11 @@ test.describe('items screen navigation', () => {
     await page.click('#hub-items-btn');
     await expect(page.locator('.item-row')).toHaveCount(3);
   });
+
+  test('item count shows count / cap format', async ({ page }) => {
+    await page.click('#hub-items-btn');
+    await expect(page.locator('.item-count').first()).toHaveText('0 / 3');
+  });
 });
 
 test.describe('item equipping', () => {
@@ -143,7 +148,7 @@ test.describe('completion badge', () => {
     expect(rate).toBeCloseTo(1 / 64);
   });
 
-  test('shiny charm overrides badge rate to 1/32', async ({ page }) => {
+  test('shiny charm stacks with badge for 1/16 rate', async ({ page }) => {
     await openApp(page, {
       wtp_caught_dex: JSON.stringify(allIds),
       wtp_items: JSON.stringify({ unseen_lure: 0, uncaught_lure: 0, shiny_charm: 1 }),
@@ -153,7 +158,7 @@ test.describe('completion badge', () => {
     await page.click('#items-back-btn');
     await startWhosThat(page, { rounds: 10 });
     const rate = await page.evaluate(() => getShinyRate());
-    expect(rate).toBeCloseTo(1 / 32);
+    expect(rate).toBeCloseTo(1 / 16);
   });
 
   test('badge awarded via checkCompletionBadge after final catch', async ({ page }) => {

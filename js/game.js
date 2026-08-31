@@ -19,14 +19,107 @@ let items = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
 try { Object.assign(items, JSON.parse(localStorage.getItem(ITEMS_LS_KEY) || '{}')); } catch (e) {}
 let activeItem = null;
 
+// ── Play streak
+const STREAK_LS_KEY = 'wtp_streak';
+let playStreak = { count: 0, lastDate: '' };
+try { Object.assign(playStreak, JSON.parse(localStorage.getItem(STREAK_LS_KEY) || '{}')); } catch (e) {}
+
+function saveStreak() {
+  try { localStorage.setItem(STREAK_LS_KEY, JSON.stringify(playStreak)); } catch (e) {}
+}
+
+// ── Pokémon of the Day
+const POTD_LS_KEY = 'wtp_potd_claimed';
+let potdCorrect = false;
+
+function getPokemonOfTheDay() {
+  const str = new Date().toDateString();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  const idx = ((hash % POKEMON.length) + POKEMON.length) % POKEMON.length;
+  return { name: POKEMON[idx], id: idx + 1 };
+}
+
+function dropItems(mode, grade) {
+  const drops = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
+  if (mode === 'wtp') {
+    let lures = 0;
+    if (difficulty === 'easy') lures = 1;
+    else if (difficulty === 'normal') lures = Math.random() < 0.3 ? 2 : 1;
+    else if (difficulty === 'hard') lures = 2;
+    if (potdCorrect) {
+      const today = new Date().toDateString();
+      let claimed;
+      try { claimed = localStorage.getItem(POTD_LS_KEY); } catch (e) {}
+      if (claimed !== today) {
+        lures *= 2;
+        try { localStorage.setItem(POTD_LS_KEY, today); } catch (e) {}
+      }
+    }
+    const half = Math.floor(lures / 2);
+    const remainder = lures - half * 2;
+    drops.unseen_lure = half + remainder;
+    drops.uncaught_lure = half;
+  } else if (mode === 'tq') {
+    if (tqTotal < 20) return drops;
+    if (grade === 'S') {
+      const guaranteed = tqTotal >= 40;
+      if (items.shiny_charm < ITEM_CAP && (guaranteed || Math.random() < 0.5)) drops.shiny_charm = 1;
+    } else if (grade === 'A') {
+      drops.unseen_lure = 1;
+    }
+  }
+  Object.keys(drops).forEach(k => {
+    items[k] = Math.min(ITEM_CAP, items[k] + drops[k]);
+  });
+  saveItems();
+  return drops;
+}
+
 function saveItems() {
   try { localStorage.setItem(ITEMS_LS_KEY, JSON.stringify(items)); } catch (e) {}
 }
 
+function updateStreak() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (playStreak.lastDate === today) return null;
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  playStreak.count = playStreak.lastDate === yesterday ? playStreak.count + 1 : 1;
+  playStreak.lastDate = today;
+  saveStreak();
+
+  const milestones = { 3: 'lure', 7: 'charm', 14: 'topup' };
+  const milestone = milestones[playStreak.count];
+  if (!milestone) return null;
+
+  if (milestone === 'lure') {
+    items.unseen_lure = Math.min(ITEM_CAP, items.unseen_lure + 1);
+    items.uncaught_lure = Math.min(ITEM_CAP, items.uncaught_lure + 1);
+    saveItems();
+    return '\u{1F525} 3-day streak! +1 Unseen Lure, +1 Uncaught Lure';
+  }
+  if (milestone === 'charm') {
+    items.shiny_charm = Math.min(ITEM_CAP, items.shiny_charm + 1);
+    saveItems();
+    return '\u{1F525} 7-day streak! +1 Shiny Charm';
+  }
+  if (milestone === 'topup') {
+    items.unseen_lure = ITEM_CAP;
+    items.uncaught_lure = ITEM_CAP;
+    items.shiny_charm = ITEM_CAP;
+    saveItems();
+    return '\u{1F525} 14-day streak! All items topped up!';
+  }
+  return null;
+}
+
 const ITEM_META = {
-  unseen_lure:   { icon: '🔭', name: 'Unseen Lure',   desc: '60% of rounds will be Pokémon you haven\'t seen yet' },
-  uncaught_lure: { icon: '🎣', name: 'Uncaught Lure', desc: '60% of rounds will be Pokémon you haven\'t caught yet' },
-  shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game' },
+  unseen_lure:   { icon: '🔭', name: 'Unseen Lure',   desc: '60% of rounds will be Pokémon you haven\'t seen yet', source: 'Who\'s That Pokémon — all difficulties' },
+  uncaught_lure: { icon: '🎣', name: 'Uncaught Lure', desc: '60% of rounds will be Pokémon you haven\'t caught yet', source: 'Who\'s That Pokémon — all difficulties' },
+  shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game (1/16 with Gen I badge)', source: 'Type Quiz — Grade S (20+ rounds)' },
 };
 
 // ── Completion badges
@@ -130,6 +223,7 @@ function isCorrect(guess) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if (id === 'hub-screen') { renderPotdHub(); renderStreakHub(); }
 }
 
 function updateStats() {
@@ -217,6 +311,7 @@ function clearPending() {
 }
 
 function getShinyRate() {
+  if (activeItem === 'shiny_charm' && completionBadges.gen1) return 1 / 16;
   if (activeItem === 'shiny_charm') return 1 / 32;
   if (completionBadges.gen1) return 1 / 64;
   return 1 / 128;
@@ -282,8 +377,9 @@ function renderItemsScreen() {
       <div class="item-info">
         <div class="item-name">${meta.name}</div>
         <div class="item-desc">${meta.desc}</div>
+        <div class="item-source">${meta.source}</div>
       </div>
-      <div class="item-count">×${count}</div>
+      <div class="item-count">${count} / ${ITEM_CAP}</div>
     `;
     row.appendChild(equip);
     list.appendChild(row);
@@ -293,7 +389,7 @@ function renderItemsScreen() {
   if (badgeEl) {
     if (completionBadges.gen1) {
       badgeEl.className = 'badge-earned';
-      badgeEl.innerHTML = '🏆 Gen I — Pokémon Master<br><small>Shiny rate: 1/64 permanently</small>';
+      badgeEl.innerHTML = '🏆 Gen I — Pokémon Master<br><small>Shiny rate: 1/64 (1/16 with Shiny Charm)</small>';
     } else {
       badgeEl.className = 'badge-placeholder';
       badgeEl.textContent = 'Catch all 151 Pokémon to earn the Gen I badge';
@@ -312,6 +408,7 @@ function showToast(msg) {
 function startGame() {
   score = 0; streak = 0; bestStreak = 0; correct = 0; answered = 0; paused = false;
   missedPokemon = [];
+  potdCorrect = false;
   timerSecs = DIFF[difficulty].timer;
   clearPending();
 
@@ -325,6 +422,13 @@ function startGame() {
 
   updateStats();
   showScreen('game-screen');
+  const itemPill = document.getElementById('game-active-item');
+  if (activeItem) {
+    const m = ITEM_META[activeItem];
+    itemPill.textContent = m.icon + ' ' + m.name + ' active';
+  } else {
+    itemPill.textContent = '';
+  }
   nextRound();
 }
 
@@ -439,6 +543,7 @@ function goToMainMenu() {
   paused = false;
   roundActive = false;
   activeItem = null;
+  document.getElementById('game-active-item').textContent = '';
   document.getElementById('pause-overlay').classList.remove('active');
   showScreen('hub-screen');
 }
@@ -531,15 +636,18 @@ function revealAnswer(wasCorrect, guessText) {
     const bonus = timeLeft >= (timerSecs - 3);
     const base  = 10 + (bonus ? 5 : 0);
     const pts   = base * mult;
-    score += pts;
+    const familiar = caughtDex.has(capturedId);
+    score += pts + (familiar ? 5 : 0);
     streak++;
     correct++;
     if (streak > bestStreak) bestStreak = streak;
     registerCaught(capturedId);
+    if (capturedId === getPokemonOfTheDay().id) potdCorrect = true;
     let msg = 'Correct! +' + pts;
     if (bonus && mult > 1) msg += ' (speed + x' + mult + ' streak!)';
     else if (bonus)        msg += ' (speed bonus!)';
     else if (mult > 1)     msg += ' (x' + mult + ' streak!)';
+    if (familiar) msg += ' +5 familiarity!';
     if (capturedShiny) msg += registerShiny(capturedId) ? ' ✨ Shiny registered!' : ' ✨ Shiny (already caught)';
     fb.textContent = msg;
     fb.className = 'correct';
@@ -582,7 +690,19 @@ function endGame() {
     allTimeBest + (isNewBest && score > 0 ? '  New best!' : '');
 
   checkCompletionBadge();
+
+  const drops = dropItems('wtp');
+  renderDrops(drops, 'end-drops');
+
+  const streakMsg = updateStreak();
+  if (streakMsg) {
+    const dropsEl = document.getElementById('end-drops');
+    dropsEl.style.display = 'block';
+    dropsEl.innerHTML += '<div class="drop-item streak-reward">' + streakMsg + '</div>';
+  }
+
   activeItem = null;
+  document.getElementById('game-active-item').textContent = '';
   renderMissedGrid();
   showScreen('end-screen');
 }
@@ -650,6 +770,58 @@ function renderMissedGrid() {
     }
     grid.appendChild(card);
   });
+}
+
+function renderDrops(drops, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const parts = [];
+  if (drops.unseen_lure > 0)   parts.push(ITEM_META.unseen_lure.icon + ' ' + ITEM_META.unseen_lure.name + ' ×' + drops.unseen_lure);
+  if (drops.uncaught_lure > 0) parts.push(ITEM_META.uncaught_lure.icon + ' ' + ITEM_META.uncaught_lure.name + ' ×' + drops.uncaught_lure);
+  if (drops.shiny_charm > 0)   parts.push(ITEM_META.shiny_charm.icon + ' ' + ITEM_META.shiny_charm.name + ' ×' + drops.shiny_charm);
+  if (parts.length === 0) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = '<div class="drops-label">Items earned</div>' +
+    parts.map(p => '<div class="drop-item">' + p + '</div>').join('');
+}
+
+function renderPotdHub() {
+  const el = document.getElementById('potd-slot');
+  if (!el) return;
+  const potd = getPokemonOfTheDay();
+  const img = el.querySelector('.potd-img');
+  const label = el.querySelector('.potd-name');
+  img.src = SPRITE_SHOWDOWN(potd.id);
+  img.onerror = () => { img.src = SPRITE_URL(potd.id); img.onerror = null; };
+  label.textContent = displayName(potd.name);
+  let claimed;
+  try { claimed = localStorage.getItem(POTD_LS_KEY); } catch (e) {}
+  const today = new Date().toDateString();
+  el.querySelector('.potd-status').textContent = claimed === today ? 'Claimed today!' : 'Name it for double lures!';
+}
+
+function renderStreakHub() {
+  const el = document.getElementById('streak-slot');
+  if (!el) return;
+  if (playStreak.count > 0) {
+    el.style.display = 'flex';
+    document.getElementById('streak-count').textContent = playStreak.count;
+    const nextEl = document.getElementById('streak-next');
+    if (nextEl) {
+      const milestones = [
+        { day: 3, label: '3 days → +1 Unseen Lure, +1 Uncaught Lure' },
+        { day: 7, label: '7 days → +1 Shiny Charm' },
+        { day: 14, label: '14 days → All items topped up' },
+      ];
+      const next = milestones.find(m => m.day > playStreak.count);
+      nextEl.textContent = next ? 'Next: ' + next.label : 'All milestones reached!';
+    }
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 // ── Pokédex modal
@@ -1049,11 +1221,22 @@ function tqGoToMainMenu() {
 function endTypeQuiz() {
   tqClearPending();
   const accuracy = Math.round(tqCorrect / tqTotal * 100);
+  const grade = accuracy >= 90 ? 'S' : accuracy >= 70 ? 'A' : accuracy >= 50 ? 'B' : 'C';
   document.getElementById('tqe-score').textContent = tqScore;
   document.getElementById('tqe-correct').textContent = tqCorrect + ' / ' + tqTotal;
   document.getElementById('tqe-accuracy').textContent = accuracy + '%';
-  document.getElementById('tqe-grade').textContent =
-    accuracy >= 90 ? 'S' : accuracy >= 70 ? 'A' : accuracy >= 50 ? 'B' : 'C';
+  document.getElementById('tqe-grade').textContent = grade;
+
+  const drops = dropItems('tq', grade);
+  renderDrops(drops, 'tqe-drops');
+
+  const streakMsg = updateStreak();
+  if (streakMsg) {
+    const dropsEl = document.getElementById('tqe-drops');
+    dropsEl.style.display = 'block';
+    dropsEl.innerHTML += '<div class="drop-item streak-reward">' + streakMsg + '</div>';
+  }
+
   renderTqReview();
   showScreen('tq-end-screen');
 }
@@ -1170,6 +1353,22 @@ document.getElementById('help-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('help-modal')) e.currentTarget.classList.remove('open');
 });
 
+document.getElementById('diff-help-btn').addEventListener('click', () =>
+  document.getElementById('diff-help-modal').classList.add('open'));
+document.getElementById('diff-help-modal-close').addEventListener('click', () =>
+  document.getElementById('diff-help-modal').classList.remove('open'));
+document.getElementById('diff-help-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+document.getElementById('tq-help-btn').addEventListener('click', () =>
+  document.getElementById('tq-help-modal').classList.add('open'));
+document.getElementById('tq-help-modal-close').addEventListener('click', () =>
+  document.getElementById('tq-help-modal').classList.remove('open'));
+document.getElementById('tq-help-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
 document.getElementById('dex-modal-close').addEventListener('click', closeDexModal);
 document.getElementById('modal-shiny-btn').addEventListener('click', () => {
   modalShiny = !modalShiny;
@@ -1267,3 +1466,6 @@ checkCompletionBadge(true);
 
 document.getElementById('hub-settings-btn').addEventListener('click', () => showScreen('settings-screen'));
 document.getElementById('global-settings-back-btn').addEventListener('click', () => showScreen('hub-screen'));
+
+renderPotdHub();
+renderStreakHub();

@@ -28,6 +28,8 @@ The hub screen has five sections:
 | Normal | 10s | Multiple choice | −5 pts |
 | Hard | 6s | 4-choice buttons | Eliminates 1 wrong option (−10 pts) |
 
+Tap the `ℹ` button next to the Difficulty label on the settings screen for a full breakdown of per-difficulty mechanics and per-mode rewards.
+
 **Scoring**
 
 | Event | Points |
@@ -36,6 +38,7 @@ The hub screen has five sections:
 | Speed bonus (answered within 3s) | +5 |
 | Streak ×2 multiplier | at 5 correct in a row |
 | Streak ×3 multiplier | at 10 correct in a row |
+| Familiarity bonus (already caught) | +5 |
 | Wrong answer or timeout | 0, streak resets |
 
 Round count is 10 / 25 / 50. Best score persists in `localStorage`. After an answer, the next round waits for the reveal announcement and the audible part of the Pokémon cry before advancing; trailing silence in cry files is capped. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
@@ -44,7 +47,7 @@ Alternate spellings are accepted (e.g. "Nidoran", "Farfetch'd", "Mr Mime").
 
 ## Type Quiz
 
-Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. The results screen has a **Round Review** list — filterable to wrong answers only or all rounds — showing each Pokémon, the question asked, your answer, and the correct one.
+Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. Tap the `ℹ` button next to the Rewards label on the settings screen for a breakdown of grade-based rewards. The results screen has a **Round Review** list — filterable to wrong answers only or all rounds — showing each Pokémon, the question asked, your answer, and the correct one.
 
 ## Pokédex
 
@@ -58,13 +61,14 @@ Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. The results scre
 
 Each round of Who's That Pokémon has a **1/128** base chance of showing a shiny. The silhouette hides it, so it's a surprise on reveal — a glowing `✨ SHINY` badge appears over the artwork. Naming it correctly registers it to your shiny Pokédex.
 
-Shiny rate tiers (highest active rate wins):
+Shiny rate tiers (rates stack):
 
 | Condition | Rate |
 |---|---|
 | Base | 1/128 |
 | Gen I Completion Badge earned (permanent) | 1/64 |
 | Shiny Charm active (one game) | 1/32 |
+| Gen I Badge + Shiny Charm | 1/16 |
 
 ## Items
 
@@ -76,7 +80,33 @@ The Item Bag holds up to three of each consumable. One item can be equipped befo
 | **Uncaught Lure** | 60% of rounds will be Pokémon you haven't caught yet |
 | **Shiny Charm** | Shiny rate → 1/32 for that game |
 
-Items are stored in `localStorage` under `wtp_items`. Item drops are not implemented yet — inventory must be seeded directly in localStorage for now.
+Items drop automatically after each game:
+
+| Source | Drop |
+|--------|------|
+| Who's That — Easy | 1 lure |
+| Who's That — Normal | 1 lure + 30% chance of a second |
+| Who's That — Hard | 2 lures guaranteed |
+| Type Quiz — Grade S (40 rounds) | 1 Shiny Charm (guaranteed, if below cap) |
+| Type Quiz — Grade S (20 rounds) | 1 Shiny Charm (50% chance, if below cap) |
+| Type Quiz — Grade A (20+ rounds) | 1 lure |
+| Type Quiz — Grade B/C or <20 rounds | Nothing |
+
+Lure drops are split evenly between Unseen and Uncaught lures. Drops are shown on the end screen.
+
+### Play Streak
+
+A 🔥 streak badge on the hub tracks consecutive days you complete any game (Who's That or Type Quiz). The streak increments once per calendar day and resets if you skip a day. One-time milestone rewards:
+
+| Milestone | Reward |
+|-----------|--------|
+| 3 days | +1 Unseen Lure, +1 Uncaught Lure |
+| 7 days | +1 Shiny Charm |
+| 14 days | All items topped up to cap |
+
+### Pokemon of the Day
+
+A date-seeded featured Pokemon is shown on the hub each day. Correctly naming it during Who's That doubles the lure drop for that game (once per day, tracked by `wtp_potd_claimed`).
 
 ## Progress Tracking
 
@@ -89,6 +119,8 @@ Three sets are tracked and persisted in `localStorage`:
 | `wtp_shiny_dex` | Shinies you've encountered and named | Gold border + ✨ on the card |
 | `wtp_items` | Consumable item counts | Item Bag screen |
 | `wtp_completion_badges` | Per-gen completion flags | Gold badge in Item Bag |
+| `wtp_potd_claimed` | Today's date if PotD bonus was claimed | Hub PotD slot |
+| `wtp_streak` | Consecutive-day play streak count and last date | Hub streak badge |
 
 **Seen vs named** — seen means the Pokémon has been in front of you, which unlocks its entry. Named means you actually got the answer right in Who's That Pokémon.
 
@@ -165,6 +197,7 @@ Spec layout:
 | `tests/tracking.spec.js` | Seen / named / shiny registration, marks and persistence |
 | `tests/settings.spec.js` | Audio toggles, announcer voice, discovery mode |
 | `tests/items.spec.js` | Item screen navigation, equip/unequip, consumption on game start, shiny rate |
+| `tests/streak.spec.js` | Play streak tracking, milestone rewards, familiarity bonus |
 
 Helpers live in `tests/helpers.js`. `openApp(page, storage)` seeds `localStorage` before the app boots, which is how tests set up a given Pokédex state without playing through it.
 

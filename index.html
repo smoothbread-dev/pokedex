@@ -80,6 +80,7 @@ body {
 .item-info { flex: 1; min-width: 0; }
 .item-name { font-weight: 700; color: #f5c842; font-size: 0.95rem; }
 .item-desc { font-size: 0.75rem; color: #aaa; }
+.item-source { font-size:0.7rem; color:#6a9; font-style:italic; margin-top:0.15rem; }
 .item-count { font-size: 1rem; font-weight: 700; color: #eee; flex-shrink: 0; min-width: 2rem; text-align: right; }
 .equip-btn {
   padding: 0.4rem 0.75rem;
@@ -100,6 +101,24 @@ body {
 .badge-earned { background: #16213e; border: 2px solid #f5c842; border-radius: 10px; padding: 0.75rem; text-align: center; font-size: 0.9rem; color: #f5c842; font-weight: 700; box-shadow: 0 0 12px rgba(245,200,66,0.35); line-height: 1.6; }
 .active-item-display { font-size: 0.9rem; color: #eee; }
 .link-btn { background: none; border: none; color: #f5c842; cursor: pointer; font-size: 0.9rem; text-decoration: underline; padding: 0; }
+
+/* ── Play Streak */
+.streak-slot { display:flex; align-items:center; justify-content:center; gap:0.3rem; font-size:1.1rem; font-weight:600; color:#e65100; flex-wrap:wrap; }
+.streak-fire { font-size:1.3rem; }
+.streak-label { font-weight:400; color:#aaa; }
+.streak-next { width:100%; text-align:center; font-size:0.75rem; color:#6a9; font-weight:400; margin-top:0.1rem; }
+
+/* ── Pokemon of the Day */
+.potd-slot { width:100%; background:#16213e; border:2px solid #0f3460; border-radius:12px; padding:1rem; display:flex; flex-direction:column; align-items:center; gap:0.4rem; margin-top:0.25rem; }
+.potd-header { font-weight:700; font-size:0.95rem; color:#f5c842; }
+.potd-img { width:80px; height:80px; image-rendering:pixelated; filter:brightness(0); }
+.potd-name { font-weight:700; font-size:0.9rem; }
+.potd-status { font-size:0.75rem; color:#aaa; }
+.drops-box { width:100%; background:#16213e; border:2px solid #0f3460; border-radius:10px; padding:0.75rem; text-align:center; }
+.drops-label { font-size:0.75rem; color:#aaa; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem; }
+.drop-item { font-size:0.9rem; color:#eee; padding:0.15rem 0; }
+.game-active-item { font-size:0.8rem; color:#f5c842; text-align:center; min-height:1.2rem; }
+.drops-info { font-size:0.8rem; color:#aaa; line-height:1.5; }
 
 /* ── Toast */
 .toast {
@@ -682,6 +701,82 @@ body {
 .help-table .yes { color: #2ecc71; font-weight: 700; }
 .help-table .no { color: #555; }
 
+/* ── Difficulty help modal */
+#diff-help-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#diff-help-modal.open { display: flex; }
+#diff-help-modal-content {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  animation: slideInRight 0.18s ease-out;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+#diff-help-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.3rem;
+  cursor: pointer;
+  min-width: 36px;
+  min-height: 36px;
+}
+#diff-help-modal-close:hover { color: #f5c842; }
+
+/* ── Type Quiz help modal */
+#tq-help-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#tq-help-modal.open { display: flex; }
+#tq-help-modal-content {
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  animation: slideInRight 0.18s ease-out;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+#tq-help-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.3rem;
+  cursor: pointer;
+  min-width: 36px;
+  min-height: 36px;
+}
+#tq-help-modal-close:hover { color: #f5c842; }
+
 /* ── Scrollable content areas */
 .scroll-area { overflow-y: auto; width: 100%; max-height: calc(100dvh - 140px); }
 
@@ -849,6 +944,7 @@ body {
   .dex-grid  { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
   .dex-card img { width: 60px; height: 60px; }
   #choices { grid-template-columns: 1fr 1fr; }
+  #potd-slot { order: -1; }
 }
 @media (max-width: 320px) {
   .hub-grid { grid-template-columns: 1fr; }
@@ -861,6 +957,12 @@ body {
 <div id="hub-screen" class="screen active">
   <div class="hub-title">PokéDex</div>
   <div class="hub-subtitle">Gen I — Kanto Edition</div>
+  <div id="streak-slot" class="streak-slot" style="display:none;">
+    <span class="streak-fire">🔥</span>
+    <span id="streak-count">0</span>
+    <span class="streak-label">day streak</span>
+    <div id="streak-next" class="streak-next"></div>
+  </div>
   <div class="hub-grid">
     <button id="hub-game-btn" class="hub-card">
       <div class="hub-card-icon">❓</div>
@@ -887,6 +989,12 @@ body {
       <div class="hub-card-title">Item Bag</div>
       <div class="hub-card-desc">Manage items and view your completion badge</div>
     </button>
+  </div>
+  <div id="potd-slot" class="potd-slot">
+    <div class="potd-header">⭐ Pokémon of the Day</div>
+    <img class="potd-img" src="" alt="Pokémon of the Day">
+    <div class="potd-name"></div>
+    <div class="potd-status"></div>
   </div>
 </div>
 
@@ -962,6 +1070,7 @@ body {
   <div class="screen-header">
     <button id="settings-back-btn" class="back-btn">&#8592;</button>
     <div class="screen-title">Who's That Pokémon?</div>
+    <button id="diff-help-btn" class="help-btn" aria-label="Difficulty info">ℹ</button>
   </div>
   <div class="settings-section">
     <div class="settings-label">Difficulty</div>
@@ -983,6 +1092,10 @@ body {
     <div class="settings-label">Active Item</div>
     <div id="active-item-row" class="active-item-display">None — <button id="go-to-items-btn" class="link-btn">choose in Item Bag →</button></div>
   </div>
+  <div class="settings-section">
+    <div class="settings-label">Rewards</div>
+    <div class="drops-info">Easy: 1 lure · Normal: 1–2 lures · Hard: 2 lures</div>
+  </div>
   <button id="start-btn" class="primary-btn">START</button>
 </div>
 
@@ -1003,6 +1116,7 @@ body {
       <span class="stat-val" id="best-val">0</span>
     </div>
   </div>
+  <div id="game-active-item" class="game-active-item"></div>
   <div class="pokemon-frame">
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="pokemon-stage">
@@ -1053,6 +1167,7 @@ body {
     <div class="end-row"><span class="label">Accuracy</span><span class="value" id="end-accuracy">0%</span></div>
     <div class="end-row"><span class="label">All-time Best</span><span class="value" id="end-best">0</span></div>
   </div>
+  <div id="end-drops" class="drops-box"></div>
   <div id="end-btns">
     <button id="play-again-btn">PLAY AGAIN</button>
     <button id="main-menu-btn">MAIN MENU</button>
@@ -1084,6 +1199,7 @@ body {
   <div class="screen-header">
     <button id="tq-settings-back-btn" class="back-btn">&#8592;</button>
     <div class="screen-title">🔥 Type Quiz</div>
+    <button id="tq-help-btn" class="help-btn" aria-label="Rewards info">ℹ</button>
   </div>
   <div class="settings-section">
     <div class="settings-label">Mode</div>
@@ -1100,6 +1216,10 @@ body {
       <button class="tq-round-btn selected" data-rounds="20">20</button>
       <button class="tq-round-btn" data-rounds="40">40</button>
     </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Rewards (20+ rounds)</div>
+    <div class="drops-info">Grade S: Shiny Charm (50% at 20r, 100% at 40r) · Grade A: 1 lure</div>
   </div>
   <button id="tq-start-btn" class="primary-btn">START</button>
 </div>
@@ -1138,6 +1258,7 @@ body {
     <div class="end-row"><span class="label">Correct</span><span class="value" id="tqe-correct">0 / 20</span></div>
     <div class="end-row"><span class="label">Accuracy</span><span class="value" id="tqe-accuracy">0%</span></div>
   </div>
+  <div id="tqe-drops" class="drops-box"></div>
   <div id="end-btns">
     <button id="tqe-play-again-btn">PLAY AGAIN</button>
     <button id="tqe-menu-btn">MAIN MENU</button>
@@ -1197,6 +1318,46 @@ body {
     </table>
     <div class="help-desc" style="margin-top:0.6rem;">All Who’s That modes count the same — difficulty and round count make no difference. Type Quiz only marks a Pokémon as seen, since it shows you the name.</div>
     <div class="help-desc" style="margin-top:0.5rem;">Silhouettes can be turned off with <strong>Discovery Mode</strong> in Settings. Progress is saved on this device only.</div>
+  </div>
+</div>
+
+<!-- ══ DIFFICULTY HELP MODAL ═════════════════════════════════════════════════ -->
+<div id="diff-help-modal" role="dialog" aria-modal="true">
+  <div id="diff-help-modal-content">
+    <button id="diff-help-modal-close" aria-label="Close">&#x2715;</button>
+    <div class="help-title">Difficulty &amp; Rewards</div>
+
+    <div class="help-sub">Per difficulty</div>
+    <table class="help-table">
+      <tr><th></th><th>Easy</th><th>Normal</th><th>Hard</th></tr>
+      <tr><td>Choices</td><td>4 random</td><td>4 random</td><td>4 same-type</td></tr>
+      <tr><td>Timer</td><td>15 s</td><td>10 s</td><td>6 s</td></tr>
+      <tr><td>Auto-hint</td><td>1st letter free</td><td>—</td><td>—</td></tr>
+      <tr><td>Hint cost</td><td>Free</td><td>−5 pts</td><td>−10 pts (removes 1)</td></tr>
+      <tr><td>Lure drops</td><td>1</td><td>1–2</td><td>2</td></tr>
+    </table>
+
+    <div class="help-desc" style="margin-top:0.6rem;">Lures split evenly between Unseen and Uncaught. PotD doubles lure drops once per day.</div>
+  </div>
+</div>
+
+<!-- ══ TYPE QUIZ HELP MODAL ═════════════════════════════════════════════════ -->
+<div id="tq-help-modal" role="dialog" aria-modal="true">
+  <div id="tq-help-modal-content">
+    <button id="tq-help-modal-close" aria-label="Close">&#x2715;</button>
+    <div class="help-title">Type Quiz Rewards</div>
+
+    <div class="help-sub">Rewards by grade (20+ rounds)</div>
+    <table class="help-table">
+      <tr><th>Grade</th><th>Rounds</th><th>Reward</th></tr>
+      <tr><td>S</td><td>40</td><td>Shiny Charm (guaranteed)</td></tr>
+      <tr><td>S</td><td>20</td><td>Shiny Charm (50% chance)</td></tr>
+      <tr><td>A</td><td>20+</td><td>1 lure</td></tr>
+      <tr><td>B / C</td><td>any</td><td>Nothing</td></tr>
+      <tr><td>any</td><td>&lt;20</td><td>Nothing</td></tr>
+    </table>
+
+    <div class="help-desc" style="margin-top:0.6rem;">Lures split evenly between Unseen and Uncaught.</div>
   </div>
 </div>
 

@@ -25,6 +25,8 @@ const LS_KEYS = [
   'wtp_dex_settings',
   'wtp_items',
   'wtp_completion_badges',
+  'wtp_potd_claimed',
+  'wtp_streak',
   'pokedex_audio_settings',
 ];
 
