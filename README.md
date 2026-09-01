@@ -1,6 +1,6 @@
-# PokéDex — Gen I Kanto Edition
+# PokéDex — Gen I & II Edition
 
-A browser-based Pokémon hub featuring all 151 Gen 1 Pokémon: a silhouette guessing game, a type/weakness quiz, and a browsable Pokédex.
+A browser-based Pokémon hub featuring Gen 1 (151 Kanto) and Gen 2 (100 Johto) Pokémon: a silhouette guessing game, a type/weakness quiz, and a browsable Pokédex.
 
 ## Play
 
@@ -8,7 +8,7 @@ Open `index.html` in any modern browser — no server, build step, or installati
 
 ## Contents
 
-The hub screen has five sections:
+The hub screen has six sections:
 
 | Section | What it is |
 |---------|-----------|
@@ -17,6 +17,7 @@ The hub screen has five sections:
 | **Pokédex** | Browse all 151, filter/search, view stats and weaknesses |
 | **Settings** | Site-wide audio and Pokédex options |
 | **Item Bag** | Manage consumable items that modify your next game |
+| **Tasks** | 17 one-time achievements across 6 categories |
 
 ## Who's That Pokémon?
 
@@ -49,9 +50,14 @@ Alternate spellings are accepted (e.g. "Nidoran", "Farfetch'd", "Mr Mime").
 
 Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. Tap the `ℹ` button next to the Rewards label on the settings screen for a breakdown of grade-based rewards. The results screen has a **Round Review** list — filterable to wrong answers only or all rounds — showing each Pokémon, the question asked, your answer, and the correct one.
 
+## Gen 2 Unlock
+
+Catching all 151 Gen 1 Pokémon earns the Gen I Completion Badge and unlocks Johto (Gen 2: 100 Pokémon, IDs 152–251). A generation selector appears in Who's That settings, Type Quiz settings, and the Pokédex. Each section is gen-scoped — it shows whichever gen is currently selected.
+
 ## Pokédex
 
-- All 151 with pixel sprites, filterable by type and searchable by name
+- Gen-scoped: 151 Gen 1 or 100 Gen 2 cards, with per-gen progress counters
+- All entries with pixel sprites, filterable by type and searchable by name
 - Detail modal with official artwork, type badges, a **Weaknesses** tab (4× / 2× / ½× / ¼× / 0×) and a **Stats** tab (base stats from PokeAPI, cached per session)
 - **Shiny toggle** on the detail card swaps between normal and shiny official artwork
 - **Discovery Mode** silhouettes Pokémon you haven't encountered yet (see below)
@@ -104,6 +110,14 @@ A 🔥 streak badge on the hub tracks consecutive days you complete any game (Wh
 | 7 days | +1 Shiny Charm |
 | 14 days | All items topped up to cap |
 
+## Tasks
+
+17 one-time achievements across 6 categories: Collection, Shiny, Scoring, Streak, Type Quiz, and Special. The Tasks hub card shows "X / 17 completed". Opening the Tasks screen lists all achievements grouped by category — completed ones have a gold border and show their unlock date.
+
+Tasks are checked reactively at game hook points (after each answer reveal, at end-of-game, and at end-of-Type-Quiz). A toast notification slides in when a task unlocks mid-game. On first load, any tasks whose conditions are already met are silently awarded without a toast.
+
+Task progress is stored in `wtp_tasks` as `{ taskId: timestamp }`.
+
 ### Pokemon of the Day
 
 A date-seeded featured Pokemon is shown on the hub each day. Correctly naming it during Who's That doubles the lure drop for that game (once per day, tracked by `wtp_potd_claimed`).
@@ -119,8 +133,11 @@ Three sets are tracked and persisted in `localStorage`:
 | `wtp_shiny_dex` | Shinies you've encountered and named | Gold border + ✨ on the card |
 | `wtp_items` | Consumable item counts | Item Bag screen |
 | `wtp_completion_badges` | Per-gen completion flags | Gold badge in Item Bag |
+| `wtp_unlocked_gens` | Which gens beyond Gen 1 are unlocked | Gen selector visibility |
+| `wtp_active_gen` | Currently selected generation | Gen selector state |
 | `wtp_potd_claimed` | Today's date if PotD bonus was claimed | Hub PotD slot |
 | `wtp_streak` | Consecutive-day play streak count and last date | Hub streak badge |
+| `wtp_tasks` | Task ID → completion timestamp | Tasks screen |
 
 **Seen vs named** — seen means the Pokémon has been in front of you, which unlocks its entry. Named means you actually got the answer right in Who's That Pokémon.
 
@@ -134,7 +151,7 @@ What contributes:
 
 Who's That difficulty and round count make no difference to tracking. Type Quiz only marks a Pokémon as seen, because it shows you the name. The `?` button on the Pokédex screen opens this same legend in-app.
 
-The Pokédex screen shows a running `👁 n / 151 seen · ✓ n named · ✨ n shiny` counter, and the detail modal flags the named and shiny states.
+The Pokédex screen shows a running `👁 n / N seen · ✓ n named · ✨ n shiny` counter (where N is 151 for Gen 1, 100 for Gen 2), and the detail modal flags the named and shiny states.
 
 Progress is **per-device** — cross-device sync would require a backend and is not implemented.
 
@@ -198,6 +215,8 @@ Spec layout:
 | `tests/settings.spec.js` | Audio toggles, announcer voice, discovery mode |
 | `tests/items.spec.js` | Item screen navigation, equip/unequip, consumption on game start, shiny rate |
 | `tests/streak.spec.js` | Play streak tracking, milestone rewards, familiarity bonus |
+| `tests/tasks.spec.js` | Task achievements: awards, toast notifications, rendering, hub badge |
+| `tests/gen2.spec.js` | Gen 2 unlock, gen selectors, gen-scoped games/pokedex, badges |
 
 Helpers live in `tests/helpers.js`. `openApp(page, storage)` seeds `localStorage` before the app boots, which is how tests set up a given Pokédex state without playing through it.
 

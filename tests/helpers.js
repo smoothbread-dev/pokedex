@@ -27,6 +27,9 @@ const LS_KEYS = [
   'wtp_completion_badges',
   'wtp_potd_claimed',
   'wtp_streak',
+  'wtp_tasks',
+  'wtp_unlocked_gens',
+  'wtp_active_gen',
   'pokedex_audio_settings',
 ];
 
@@ -146,7 +149,9 @@ async function startTypeQuiz(page, { mode = 'type', rounds = 10 } = {}) {
  */
 async function answerTypeQuiz(page, { correct = true } = {}) {
   await page.evaluate(right => {
-    const typeStr = TYPES[tqCurrent.id - 1] || 'Normal';
+    const offset = tqCurrent.id > 151 ? 151 : 0;
+    const types = tqCurrent.id > 151 ? TYPES_GEN2 : TYPES;
+    const typeStr = types[tqCurrent.id - offset - 1] || 'Normal';
     const wk = computeWeaknesses(typeStr);
     const weakList = Object.keys(wk).filter(t => wk[t] >= 2);
     const buttons = [...document.querySelectorAll('#tq-choices .tq-choice-btn')];

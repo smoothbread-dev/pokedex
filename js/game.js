@@ -127,6 +127,18 @@ const BADGES_LS_KEY = 'wtp_completion_badges';
 let completionBadges = {};
 try { completionBadges = JSON.parse(localStorage.getItem(BADGES_LS_KEY) || '{}'); } catch (e) {}
 
+// ── Generation state
+let unlockedGens = {};
+try { unlockedGens = JSON.parse(localStorage.getItem('wtp_unlocked_gens') || '{}'); } catch (e) {}
+let currentGen = 'gen1';
+try { currentGen = localStorage.getItem('wtp_active_gen') || 'gen1'; } catch (e) {}
+if (currentGen === 'gen2' && !unlockedGens.gen2) currentGen = 'gen1';
+
+function genPool()    { return currentGen === 'gen2' ? POKEMON_GEN2 : POKEMON; }
+function genTypes()   { return currentGen === 'gen2' ? TYPES_GEN2 : TYPES; }
+function genOffset()  { return currentGen === 'gen2' ? 151 : 0; }
+function genAliases() { return currentGen === 'gen2' ? ALIASES_GEN2 : ALIASES; }
+
 // ── Shiny dex
 const SHINY_LS_KEY = 'wtp_shiny_dex';
 let shinyDex = new Set();
@@ -177,6 +189,92 @@ function saveDexSettings() {
 
 function isHidden(id) { return dexSettings.discovery && !seenDex.has(id); }
 
+// ── Tasks / Achievements
+const TASKS_LS_KEY = 'wtp_tasks';
+let unlockedTasks = {};
+try { unlockedTasks = JSON.parse(localStorage.getItem(TASKS_LS_KEY) || '{}'); } catch (e) {}
+
+function saveTasks() {
+  try { localStorage.setItem(TASKS_LS_KEY, JSON.stringify(unlockedTasks)); } catch (e) {}
+}
+
+const TASK_DEFS = [
+  { id: 'seen_10',       cat: 'Collection', title: 'Spotter',           desc: 'See 10 Pokémon',             check: () => seenDex.size >= 10 },
+  { id: 'seen_50',       cat: 'Collection', title: 'Keen Eye',          desc: 'See 50 Pokémon',             check: () => seenDex.size >= 50 },
+  { id: 'caught_25',     cat: 'Collection', title: 'Trainer',           desc: 'Name 25 Pokémon',            check: () => caughtDex.size >= 25 },
+  { id: 'caught_75',     cat: 'Collection', title: 'Ace Trainer',       desc: 'Name 75 Pokémon',            check: () => caughtDex.size >= 75 },
+  { id: 'caught_151',    cat: 'Collection', title: 'Pokémon Master',    desc: 'Name all 151 Pokémon',       check: () => caughtDex.size >= 151 },
+  { id: 'shiny_1',       cat: 'Shiny',      title: 'Lucky Find',        desc: 'Find your first shiny',      check: () => shinyDex.size >= 1 },
+  { id: 'shiny_10',      cat: 'Shiny',      title: 'Shiny Collector',   desc: 'Find 10 shinies',            check: () => shinyDex.size >= 10 },
+  { id: 'shiny_50',      cat: 'Shiny',      title: 'Shiny Hunter',      desc: 'Find 50 shinies',            check: () => shinyDex.size >= 50 },
+  { id: 'score_100',     cat: 'Scoring',    title: 'Centurion',         desc: 'Best score ≥ 100',      check: () => allTimeBest >= 100 },
+  { id: 'score_500',     cat: 'Scoring',    title: 'High Roller',       desc: 'Best score ≥ 500',      check: () => allTimeBest >= 500 },
+  { id: 'score_1000',    cat: 'Scoring',    title: 'Legendary',         desc: 'Best score ≥ 1000',     check: () => allTimeBest >= 1000 },
+  { id: 'streak_5',      cat: 'Streak',     title: 'Hot Streak',        desc: '5-streak in a single game',  check: () => bestStreak >= 5 },
+  { id: 'streak_10',     cat: 'Streak',     title: 'Unstoppable',       desc: '10-streak in a single game', check: () => bestStreak >= 10 },
+  { id: 'tq_grade_a',    cat: 'Type Quiz',  title: 'Type Scholar',      desc: 'Grade A+ in Type Quiz',      check: () => false },
+  { id: 'tq_grade_s',    cat: 'Type Quiz',  title: 'Type Expert',       desc: 'Grade S in Type Quiz',       check: () => false },
+  { id: 'tq_perfect',    cat: 'Type Quiz',  title: 'Flawless',          desc: '100% on 20+ rounds',         check: () => false },
+  { id: 'full_dex_seen', cat: 'Special',    title: "Gotta See 'Em All", desc: 'See all 151 Pokémon',        check: () => seenDex.size >= 151 },
+];
+
+function checkTasks(silent, context) {
+  var newly = [];
+  for (var i = 0; i < TASK_DEFS.length; i++) {
+    var t = TASK_DEFS[i];
+    if (unlockedTasks[t.id]) continue;
+    var earned = (context && context[t.id]) || t.check();
+    if (earned) { unlockedTasks[t.id] = Date.now(); newly.push(t); }
+  }
+  if (newly.length) {
+    saveTasks();
+    if (!silent) showToast('🏆 ' + newly[0].title + (newly.length > 1 ? ' (+' + (newly.length - 1) + ' more)' : ''));
+  }
+}
+
+function renderTasksScreen() {
+  var list = document.getElementById('tasks-list');
+  if (!list) return;
+  list.innerHTML = '';
+  var completedCount = Object.keys(unlockedTasks).length;
+  var header = document.getElementById('tasks-count');
+  if (header) header.textContent = completedCount + ' / ' + TASK_DEFS.length + ' completed';
+  var categories = [];
+  var catMap = {};
+  for (var i = 0; i < TASK_DEFS.length; i++) {
+    var task = TASK_DEFS[i];
+    if (!catMap[task.cat]) { catMap[task.cat] = []; categories.push(task.cat); }
+    catMap[task.cat].push(task);
+  }
+  for (var c = 0; c < categories.length; c++) {
+    var cat = categories[c];
+    var catHeader = document.createElement('div');
+    catHeader.className = 'task-cat-header';
+    catHeader.textContent = cat;
+    list.appendChild(catHeader);
+    var tasks = catMap[cat];
+    for (var j = 0; j < tasks.length; j++) {
+      var tk = tasks[j];
+      var done = !!unlockedTasks[tk.id];
+      var row = document.createElement('div');
+      row.className = 'task-row' + (done ? ' task-done' : '');
+      row.innerHTML =
+        '<div class="task-icon">' + (done ? '🏆' : '🔒') + '</div>' +
+        '<div class="task-info">' +
+          '<div class="task-title">' + tk.title + '</div>' +
+          '<div class="task-desc">' + tk.desc + '</div>' +
+        '</div>' +
+        (done ? '<div class="task-date">' + new Date(unlockedTasks[tk.id]).toLocaleDateString() + '</div>' : '');
+      list.appendChild(row);
+    }
+  }
+}
+
+function updateTasksHubBadge() {
+  var desc = document.getElementById('hub-tasks-desc');
+  if (desc) desc.textContent = Object.keys(unlockedTasks).length + ' / ' + TASK_DEFS.length + ' completed';
+}
+
 // ── Type quiz state
 let tqQueue = [], tqCurrent = null, tqScore = 0, tqCorrect = 0, tqTotal = 20;
 let tqRoundActive = false;
@@ -200,6 +298,9 @@ function tqClearPending() {
 
 const GEN1_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
   'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon'];
+const GEN2_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
+  'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon',
+  'Dark','Steel'];
 
 // ── Utilities
 function shuffle(arr) {
@@ -216,14 +317,14 @@ function normalise(str) { return str.toLowerCase().trim().replace(/[^a-z0-9\-]/g
 function isCorrect(guess) {
   const g = normalise(guess);
   if (g === normalise(current.name)) return true;
-  const alts = ALIASES[current.name] || [];
+  const alts = genAliases()[current.name] || [];
   return alts.some(a => normalise(a) === g);
 }
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if (id === 'hub-screen') { renderPotdHub(); renderStreakHub(); }
+  if (id === 'hub-screen') { renderPotdHub(); renderStreakHub(); updateTasksHubBadge(); }
 }
 
 function updateStats() {
@@ -318,17 +419,34 @@ function getShinyRate() {
 }
 
 function checkCompletionBadge(silent) {
-  if (completionBadges.gen1) return;
-  const allCaught = POKEMON.every((_, i) => caughtDex.has(i + 1));
-  if (!allCaught) return;
-  completionBadges.gen1 = true;
-  try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
-  if (!silent) showToast('🏆 Gen I badge earned! Shiny rate → 1/64 permanently.');
+  if (!completionBadges.gen1) {
+    const allCaught = POKEMON.every((_, i) => caughtDex.has(i + 1));
+    if (allCaught) {
+      completionBadges.gen1 = true;
+      try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
+      if (!silent) showToast('🏆 Gen I badge earned! Shiny rate → 1/64 permanently.');
+    }
+  }
+  if (completionBadges.gen1 && !unlockedGens.gen2) {
+    unlockedGens.gen2 = true;
+    try { localStorage.setItem('wtp_unlocked_gens', JSON.stringify(unlockedGens)); } catch (e) {}
+    if (!silent) showToast('🎉 Johto unlocked! Gen 2 is now available.');
+    renderGenSelectors();
+  }
+  if (unlockedGens.gen2 && !completionBadges.gen2) {
+    const allGen2 = POKEMON_GEN2.every((_, i) => caughtDex.has(152 + i));
+    if (allGen2) {
+      completionBadges.gen2 = true;
+      try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
+      if (!silent) showToast('🏆 Gen II badge earned!');
+    }
+  }
   renderItemsScreen();
 }
 
 function buildQueue(count) {
-  const all = POKEMON.map((name, i) => ({ name, id: i + 1 }));
+  const pool = genPool(), offset = genOffset();
+  const all = pool.map((name, i) => ({ name, id: offset + i + 1 }));
   if (activeItem === 'unseen_lure' || activeItem === 'uncaught_lure') {
     const dex = activeItem === 'unseen_lure' ? seenDex : caughtDex;
     const priority = shuffle(all.filter(p => !dex.has(p.id)));
@@ -348,7 +466,7 @@ function renderActiveItemRow() {
   } else {
     row.innerHTML = 'None — <button id="go-to-items-btn" class="link-btn">choose in Item Bag →</button>';
     const goBtn = document.getElementById('go-to-items-btn');
-    if (goBtn) goBtn.addEventListener('click', () => showScreen('items-screen'));
+    if (goBtn) goBtn.addEventListener('click', () => { renderItemsScreen(); showScreen('items-screen'); });
   }
 }
 
@@ -395,6 +513,24 @@ function renderItemsScreen() {
       badgeEl.textContent = 'Catch all 151 Pokémon to earn the Gen I badge';
     }
   }
+
+  const badge2 = document.getElementById('badge-gen2');
+  if (badge2) {
+    if (unlockedGens.gen2) {
+      badge2.style.display = '';
+      if (completionBadges.gen2) {
+        badge2.className = 'badge-earned';
+        badge2.innerHTML = '🏆 Gen II — Johto Master';
+      } else {
+        badge2.className = 'badge-placeholder';
+        badge2.textContent = 'Catch all 100 Gen II Pokémon to earn the Gen II badge';
+      }
+    } else {
+      badge2.style.display = 'none';
+      badge2.className = '';
+      badge2.textContent = '';
+    }
+  }
 }
 
 function showToast(msg) {
@@ -404,6 +540,40 @@ function showToast(msg) {
   toast.classList.add('visible');
   setTimeout(() => toast.classList.remove('visible'), 3000);
 }
+
+function renderGenSelectors() {
+  const sections = ['wtp-gen-section', 'tq-gen-section', 'dex-gen-section'];
+  const show = !!unlockedGens.gen2;
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+  document.querySelectorAll('.gen-btn').forEach(btn => {
+    const gen = btn.dataset.gen;
+    btn.classList.toggle('selected', gen === currentGen);
+    if (gen === 'gen2') {
+      btn.disabled = !unlockedGens.gen2;
+      btn.textContent = unlockedGens.gen2 ? 'Gen 2' : 'Gen 2 🔒';
+    }
+  });
+}
+
+function setGen(gen) {
+  if (gen === 'gen2' && !unlockedGens.gen2) return;
+  currentGen = gen;
+  try { localStorage.setItem('wtp_active_gen', gen); } catch (e) {}
+  renderGenSelectors();
+}
+
+document.querySelectorAll('.gen-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setGen(btn.dataset.gen);
+    if (btn.closest('#dex-gen-section')) {
+      buildPokedex();
+      refreshDexMarks();
+    }
+  });
+});
 
 function startGame() {
   score = 0; streak = 0; bestStreak = 0; correct = 0; answered = 0; paused = false;
@@ -659,6 +829,7 @@ function revealAnswer(wasCorrect, guessText) {
 
   }
 
+  checkTasks(false);
   updateStats();
   schedulePendingAfter(nextRound, 3000,
     done => announceReveal(capturedName, () => playCry(capturedId, done)));
@@ -690,6 +861,7 @@ function endGame() {
     allTimeBest + (isNewBest && score > 0 ? '  New best!' : '');
 
   checkCompletionBadge();
+  checkTasks(false);
 
   const drops = dropItems('wtp');
   renderDrops(drops, 'end-drops');
@@ -980,15 +1152,20 @@ function renderModalStats(stats) {
 // ── Pokédex listing
 function buildPokedex() {
   const grid = document.getElementById('pokedex-grid');
-  if (grid.children.length > 0) return;
+  grid.innerHTML = '';
+  dexFilterType = 'all';
+  const searchInput = document.getElementById('pokedex-search');
+  if (searchInput) searchInput.value = '';
 
   const filterBar = document.getElementById('pokedex-filter');
+  filterBar.innerHTML = '';
   const allBtn = document.createElement('button');
   allBtn.className = 'type-filter-btn selected';
   allBtn.textContent = 'All';
   allBtn.addEventListener('click', () => applyDexFilter('all', allBtn));
   filterBar.appendChild(allBtn);
-  GEN1_TYPES.forEach(t => {
+  const filterTypes = currentGen === 'gen2' ? GEN2_TYPES : GEN1_TYPES;
+  filterTypes.forEach(t => {
     const btn = document.createElement('button');
     btn.className = 'type-filter-btn type-badge type-' + t.toLowerCase();
     btn.textContent = t;
@@ -996,9 +1173,10 @@ function buildPokedex() {
     filterBar.appendChild(btn);
   });
 
-  POKEMON.forEach((name, i) => {
-    const id = i + 1;
-    const typeStr = TYPES[id - 1] || '';
+  const pool = genPool(), offset = genOffset(), types = genTypes();
+  pool.forEach((name, i) => {
+    const id = offset + i + 1;
+    const typeStr = types[i] || '';
     const card = document.createElement('div');
     card.className = 'dex-card';
     card.dataset.types = typeStr;
@@ -1061,9 +1239,14 @@ function refreshDexMarks() {
     card.querySelector('.dex-card-name').textContent = label;
     card.title = label;
   });
+  const pool = genPool(), offset = genOffset();
+  const genIds = new Set(pool.map((_, i) => offset + i + 1));
+  const genSeen = [...seenDex].filter(id => genIds.has(id)).length;
+  const genCaught = [...caughtDex].filter(id => genIds.has(id)).length;
+  const genShiny = [...shinyDex].filter(id => genIds.has(id)).length;
   document.getElementById('dex-progress').textContent =
-    '👁 ' + seenDex.size + ' / ' + POKEMON.length + ' seen  ·  ✓ ' +
-    caughtDex.size + ' named  ·  ✨ ' + shinyDex.size + ' shiny';
+    '👁 ' + genSeen + ' / ' + pool.length + ' seen  ·  ✓ ' +
+    genCaught + ' named  ·  ✨ ' + genShiny + ' shiny';
 }
 
 let dexFilterType = 'all';
@@ -1089,7 +1272,8 @@ function applyDexSearch() {
 // ── Type Quiz
 function startTypeQuiz() {
   tqClearPending();
-  const all = shuffle(POKEMON.map((name, i) => ({ name, id: i + 1 })));
+  const pool = genPool(), off = genOffset();
+  const all = shuffle(pool.map((name, i) => ({ name, id: off + i + 1 })));
   tqQueue = all.slice(0, tqTotal);
   tqScore = 0; tqCorrect = 0; tqRoundActive = false; tqReview = [];
   document.getElementById('tq-score-val').textContent = 0;
@@ -1099,6 +1283,7 @@ function startTypeQuiz() {
 }
 
 const GEN1_TYPE_POOL = [...new Set(TYPES)];
+function genTypePool() { return [...new Set(genTypes())]; }
 
 function makeTqTypeBadges(typeStr, btn) {
   typeStr.split('/').forEach(t => {
@@ -1126,7 +1311,7 @@ function nextTypeRound() {
   document.getElementById('tq-progress').textContent =
     (tqTotal - tqQueue.length) + ' / ' + tqTotal;
 
-  const typeStr = TYPES[tqCurrent.id - 1] || 'Normal';
+  const typeStr = genTypes()[tqCurrent.id - genOffset() - 1] || 'Normal';
   const wkMap = computeWeaknesses(typeStr);
   const weakList = Object.keys(wkMap).filter(t => wkMap[t] >= 2);
 
@@ -1149,7 +1334,7 @@ function nextTypeRound() {
     feedbackMsg = displayName(tqCurrent.name) + ' is ' + typeStr + ' type. Weak to: ' + weakDisplay + '.';
   } else {
     correctType = typeStr;
-    wrongPool = GEN1_TYPE_POOL.filter(t => t !== correctType);
+    wrongPool = genTypePool().filter(t => t !== correctType);
     document.getElementById('tq-question-label').textContent = 'What type?';
     feedbackMsg = displayName(tqCurrent.name) + ' is ' + correctType + ' type!';
   }
@@ -1226,6 +1411,12 @@ function endTypeQuiz() {
   document.getElementById('tqe-correct').textContent = tqCorrect + ' / ' + tqTotal;
   document.getElementById('tqe-accuracy').textContent = accuracy + '%';
   document.getElementById('tqe-grade').textContent = grade;
+
+  const tqOverrides = {};
+  if (grade === 'A' || grade === 'S') tqOverrides.tq_grade_a = true;
+  if (grade === 'S') tqOverrides.tq_grade_s = true;
+  if (accuracy === 100 && tqTotal >= 20) tqOverrides.tq_perfect = true;
+  checkTasks(false, tqOverrides);
 
   const drops = dropItems('tq', grade);
   renderDrops(drops, 'tqe-drops');
@@ -1312,11 +1503,13 @@ function renderTqReview() {
 }
 
 // ── Event listeners
-document.getElementById('hub-game-btn').addEventListener('click', () => { renderActiveItemRow(); showScreen('game-settings-screen'); });
-document.getElementById('hub-dex-btn').addEventListener('click', () => { buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
-document.getElementById('hub-typequiz-btn').addEventListener('click', () => showScreen('tq-settings-screen'));
+document.getElementById('hub-game-btn').addEventListener('click', () => { renderGenSelectors(); renderActiveItemRow(); showScreen('game-settings-screen'); });
+document.getElementById('hub-dex-btn').addEventListener('click', () => { renderGenSelectors(); buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
+document.getElementById('hub-typequiz-btn').addEventListener('click', () => { renderGenSelectors(); showScreen('tq-settings-screen'); });
 document.getElementById('hub-items-btn').addEventListener('click', () => { renderItemsScreen(); showScreen('items-screen'); });
 document.getElementById('items-back-btn').addEventListener('click', () => showScreen('hub-screen'));
+document.getElementById('hub-tasks-btn').addEventListener('click', () => { renderTasksScreen(); showScreen('tasks-screen'); });
+document.getElementById('tasks-back-btn').addEventListener('click', () => showScreen('hub-screen'));
 
 document.querySelectorAll('.diff-btn').forEach(b => b.addEventListener('click', () => {
   difficulty = b.dataset.diff;
@@ -1463,9 +1656,12 @@ syncAudioToggles();
 
 // Retroactive badge award for players who caught all 151 before this feature shipped.
 checkCompletionBadge(true);
+checkTasks(true);
+updateTasksHubBadge();
 
 document.getElementById('hub-settings-btn').addEventListener('click', () => showScreen('settings-screen'));
 document.getElementById('global-settings-back-btn').addEventListener('click', () => showScreen('hub-screen'));
 
+renderGenSelectors();
 renderPotdHub();
 renderStreakHub();

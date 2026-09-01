@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { openApp, startWhosThat, waitForRound, activeScreen } = require('./helpers');
+const { openApp, startWhosThat, waitForRound, activeScreen, answer, answerAndAdvance } = require('./helpers');
 
 test.describe('items screen navigation', () => {
   test.beforeEach(async ({ page }) => openApp(page));
@@ -185,7 +185,21 @@ test.describe('completion badge', () => {
   test('badge section shows placeholder when not earned', async ({ page }) => {
     await openApp(page);
     await page.click('#hub-items-btn');
-    await expect(page.locator('.badge-placeholder')).toBeVisible();
-    await expect(page.locator('.badge-earned')).toHaveCount(0);
+    await expect(page.locator('#badge-gen1.badge-placeholder')).toBeVisible();
+    await expect(page.locator('#badge-gen1.badge-earned')).toHaveCount(0);
+  });
+});
+
+test.describe('item bag freshness via settings link', () => {
+  test('navigating to items via "choose in Item Bag" link shows updated counts', async ({ page }) => {
+    await openApp(page);
+    await page.click('#hub-game-btn');
+    await page.evaluate(() => {
+      items.unseen_lure = 2;
+      items.uncaught_lure = 1;
+      saveItems();
+    });
+    await page.click('#go-to-items-btn');
+    await expect(page.locator('.item-count').first()).toHaveText('2 / 3');
   });
 });

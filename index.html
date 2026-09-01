@@ -120,6 +120,19 @@ body {
 .game-active-item { font-size:0.8rem; color:#f5c842; text-align:center; min-height:1.2rem; }
 .drops-info { font-size:0.8rem; color:#aaa; line-height:1.5; }
 
+/* ── Tasks */
+.tasks-count { font-size: 0.9rem; color: #f5c842; font-weight: 700; text-align: center; }
+.tasks-list { width: 100%; display: flex; flex-direction: column; gap: 0.25rem; }
+.task-cat-header { font-size: 0.75rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid #1a1a2e; }
+.task-row { display: flex; align-items: center; gap: 0.75rem; background: #16213e; border: 2px solid #0f3460; border-radius: 10px; padding: 0.6rem 0.75rem; }
+.task-row.task-done { border-color: #f5c842; box-shadow: 0 0 8px rgba(245,200,66,0.2); }
+.task-icon { font-size: 1.3rem; flex-shrink: 0; }
+.task-info { flex: 1; min-width: 0; }
+.task-title { font-weight: 700; font-size: 0.9rem; color: #eee; }
+.task-done .task-title { color: #f5c842; }
+.task-desc { font-size: 0.75rem; color: #aaa; }
+.task-date { font-size: 0.65rem; color: #666; white-space: nowrap; }
+
 /* ── Toast */
 .toast {
   position: fixed;
@@ -989,6 +1002,11 @@ body {
       <div class="hub-card-title">Item Bag</div>
       <div class="hub-card-desc">Manage items and view your completion badge</div>
     </button>
+    <button id="hub-tasks-btn" class="hub-card">
+      <div class="hub-card-icon">🏆</div>
+      <div class="hub-card-title">Tasks</div>
+      <div class="hub-card-desc" id="hub-tasks-desc">0 / 17 completed</div>
+    </button>
   </div>
   <div id="potd-slot" class="potd-slot">
     <div class="potd-header">⭐ Pokémon of the Day</div>
@@ -1008,7 +1026,18 @@ body {
   <div class="items-badge-section">
     <div class="settings-label">Completion Badge</div>
     <div id="badge-gen1" class="badge-placeholder">Catch all 151 Pokémon to earn the Gen I badge</div>
+    <div id="badge-gen2" style="display:none"></div>
   </div>
+</div>
+
+<!-- ══ TASKS ═══════════════════════════════════════════════════════════ -->
+<div id="tasks-screen" class="screen">
+  <div class="screen-header">
+    <button id="tasks-back-btn" class="back-btn">&#8592;</button>
+    <div class="screen-title">🏆 Tasks</div>
+  </div>
+  <div id="tasks-count" class="tasks-count">0 / 17 completed</div>
+  <div id="tasks-list" class="tasks-list"></div>
 </div>
 
 <!-- ══ SETTINGS ═══════════════════════════════════════════════════════ -->
@@ -1086,6 +1115,13 @@ body {
       <button class="round-btn" data-rounds="10">10</button>
       <button class="round-btn selected" data-rounds="25">25</button>
       <button class="round-btn" data-rounds="50">50</button>
+    </div>
+  </div>
+  <div id="wtp-gen-section" class="settings-section" style="display:none">
+    <div class="settings-label">Generation</div>
+    <div class="btn-row">
+      <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
+      <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
     </div>
   </div>
   <div class="settings-section">
@@ -1187,6 +1223,12 @@ body {
   </div>
   <div class="screen-hint">Tap any card for details</div>
   <div id="dex-progress">✓ 0 / 151 named  ·  ✨ 0 / 151 shiny</div>
+  <div id="dex-gen-section" class="settings-section" style="display:none">
+    <div class="btn-row">
+      <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
+      <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
+    </div>
+  </div>
   <input id="dex-search" type="search" placeholder="Search Pokémon…" autocomplete="off" autocorrect="off" spellcheck="false">
   <div id="pokedex-filter"></div>
   <div class="scroll-area">
@@ -1215,6 +1257,13 @@ body {
       <button class="tq-round-btn" data-rounds="10">10</button>
       <button class="tq-round-btn selected" data-rounds="20">20</button>
       <button class="tq-round-btn" data-rounds="40">40</button>
+    </div>
+  </div>
+  <div id="tq-gen-section" class="settings-section" style="display:none">
+    <div class="settings-label">Generation</div>
+    <div class="btn-row">
+      <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
+      <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
     </div>
   </div>
   <div class="settings-section">

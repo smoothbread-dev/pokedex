@@ -3,13 +3,14 @@ const { openApp, activeScreen } = require('./helpers');
 
 test.beforeEach(async ({ page }) => openApp(page));
 
-test('hub shows the five sections', async ({ page }) => {
-  await expect(page.locator('.hub-card')).toHaveCount(5);
+test('hub shows the six sections', async ({ page }) => {
+  await expect(page.locator('.hub-card')).toHaveCount(6);
   await expect(page.locator('#hub-game-btn')).toContainText("Who's That?");
   await expect(page.locator('#hub-typequiz-btn')).toContainText('Type Quiz');
   await expect(page.locator('#hub-dex-btn')).toContainText('Pokédex');
   await expect(page.locator('#hub-settings-btn')).toContainText('Settings');
   await expect(page.locator('#hub-items-btn')).toContainText('Item Bag');
+  await expect(page.locator('#hub-tasks-btn')).toContainText('Tasks');
 });
 
 test('exactly one screen is active at a time', async ({ page }) => {
@@ -23,6 +24,7 @@ const routes = [
   { name: 'Pokédex', open: '#hub-dex-btn', screen: 'pokedex-screen', back: '#dex-back-btn' },
   { name: 'Settings', open: '#hub-settings-btn', screen: 'settings-screen', back: '#global-settings-back-btn' },
   { name: 'Item Bag', open: '#hub-items-btn', screen: 'items-screen', back: '#items-back-btn' },
+  { name: 'Tasks', open: '#hub-tasks-btn', screen: 'tasks-screen', back: '#tasks-back-btn' },
 ];
 
 for (const route of routes) {

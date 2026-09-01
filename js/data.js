@@ -114,6 +114,59 @@ const ALIASES = {
   "mr-mime":    ["mr mime","mr. mime","mrmime"],
 };
 
+const POKEMON_GEN2 = [
+  "chikorita","bayleef","meganium","cyndaquil","quilava","typhlosion",
+  "totodile","croconaw","feraligatr","sentret","furret","hoothoot",
+  "noctowl","ledyba","ledian","spinarak","ariados","crobat",
+  "chinchou","lanturn","pichu","cleffa","igglybuff","togepi",
+  "togetic","natu","xatu","mareep","flaaffy","ampharos",
+  "bellossom","marill","azumarill","sudowoodo","politoed","hoppip",
+  "skiploom","jumpluff","aipom","sunkern","sunflora","yanma",
+  "wooper","quagsire","espeon","umbreon","murkrow","slowking",
+  "misdreavus","unown","wobbuffet","girafarig","pineco","forretress",
+  "dunsparce","gligar","steelix","snubbull","granbull","qwilfish",
+  "scizor","shuckle","heracross","sneasel","teddiursa","ursaring",
+  "slugma","magcargo","swinub","piloswine","corsola","remoraid",
+  "octillery","delibird","mantine","skarmory","houndour","houndoom",
+  "kingdra","phanpy","donphan","porygon2","stantler","smeargle",
+  "tyrogue","hitmontop","smoochum","elekid","magby","miltank",
+  "blissey","raikou","entei","suicune","larvitar","pupitar",
+  "tyranitar","lugia","ho-oh","celebi"
+];
+
+const TYPES_GEN2 = [
+  "Grass","Grass","Grass","Fire","Fire","Fire",
+  "Water","Water","Water","Normal","Normal",
+  "Normal/Flying","Normal/Flying","Bug/Flying","Bug/Flying",
+  "Bug/Poison","Bug/Poison","Poison/Flying",
+  "Water/Electric","Water/Electric","Electric","Fairy",
+  "Normal/Fairy","Fairy","Fairy/Flying",
+  "Psychic/Flying","Psychic/Flying","Electric","Electric","Electric",
+  "Grass","Water/Fairy","Water/Fairy","Rock","Water",
+  "Grass/Flying","Grass/Flying","Grass/Flying",
+  "Normal","Grass","Grass","Bug/Flying",
+  "Water/Ground","Water/Ground","Psychic","Dark",
+  "Dark/Flying","Water/Psychic","Ghost","Psychic",
+  "Psychic","Normal/Psychic","Bug","Bug/Steel",
+  "Normal","Ground/Flying","Steel/Ground",
+  "Fairy","Fairy","Water/Poison",
+  "Bug/Steel","Bug/Rock","Bug/Fighting","Dark/Ice",
+  "Normal","Normal","Fire","Fire/Rock",
+  "Ice/Ground","Ice/Ground","Water/Rock","Water","Water",
+  "Ice/Flying","Water/Flying","Steel/Flying",
+  "Dark/Fire","Dark/Fire","Water/Dragon",
+  "Ground","Ground","Normal","Normal","Normal",
+  "Fighting","Fighting","Ice/Psychic","Electric","Fire",
+  "Normal","Normal","Electric","Fire","Water",
+  "Rock/Ground","Rock/Ground","Rock/Dark",
+  "Psychic/Flying","Fire/Flying","Psychic/Grass",
+];
+
+const ALIASES_GEN2 = {
+  "ho-oh":    ["ho oh","hooh"],
+  "porygon2": ["porygon 2"],
+};
+
 const DIFF = {
   easy:   { timer: 15, hintCost: 0  },
   normal: { timer: 10, hintCost: 5  },
