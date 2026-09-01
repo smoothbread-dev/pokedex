@@ -279,7 +279,7 @@ function updateTasksHubBadge() {
 let tqQueue = [], tqCurrent = null, tqScore = 0, tqCorrect = 0, tqTotal = 20;
 let tqRoundActive = false;
 let tqRoundIsWeakness = false;
-let tqMode = 'mixed';
+let tqMode = 'type';
 let tqReview = [];
 let tqReviewFilter = 'wrong';
 let tqAdvanceTimeout = null, tqPendingAction = null, tqPendingDelay = 0, tqPausedRoundActive = false;
@@ -560,12 +560,25 @@ function renderGenSelectors() {
   updateDexHubDesc();
 }
 
+function joinAnd(arr) {
+  if (arr.length <= 2) return arr.join(' & ');
+  return arr.slice(0, -1).join(', ') + ' & ' + arr[arr.length - 1];
+}
+
 function updateDexHubDesc() {
   var el = document.getElementById('hub-dex-desc');
-  if (!el) return;
-  var total = 151;
-  if (unlockedGens.gen2) total += 100;
-  el.textContent = 'Browse all ' + total + ' — search, filter and view details';
+  if (el) {
+    var total = 151;
+    if (unlockedGens.gen2) total += 100;
+    el.textContent = 'Browse all ' + total + ' — search, filter and view details';
+  }
+  var sub = document.getElementById('hub-subtitle');
+  if (sub) {
+    var gens = ['I'];
+    var regions = ['Kanto'];
+    if (unlockedGens.gen2) { gens.push('II'); regions.push('Johto'); }
+    sub.textContent = 'Gen ' + joinAnd(gens) + ' — ' + joinAnd(regions) + ' Edition';
+  }
 }
 
 function setGen(gen) {
@@ -1325,13 +1338,7 @@ function nextTypeRound() {
   const wkMap = computeWeaknesses(typeStr);
   const weakList = Object.keys(wkMap).filter(t => wkMap[t] >= 2);
 
-  if (tqMode === 'weakness') {
-    tqRoundIsWeakness = true;
-  } else if (tqMode === 'type') {
-    tqRoundIsWeakness = false;
-  } else {
-    tqRoundIsWeakness = weakList.length > 0 && Math.random() < 0.5;
-  }
+  tqRoundIsWeakness = false;
 
   let correctType, wrongPool, feedbackMsg;
   if (tqRoundIsWeakness) {

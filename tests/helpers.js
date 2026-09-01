@@ -133,9 +133,8 @@ function startShinyRound(page) {
   });
 }
 
-async function startTypeQuiz(page, { mode = 'type', rounds = 10 } = {}) {
+async function startTypeQuiz(page, { rounds = 10 } = {}) {
   await page.click('#hub-typequiz-btn');
-  await page.click(`.tq-mode-btn[data-mode="${mode}"]`);
   await page.click(`.tq-round-btn[data-rounds="${rounds}"]`);
   await page.click('#tq-start-btn');
   await expect(page.locator('#tq-screen')).toHaveClass(/active/);

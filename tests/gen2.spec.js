@@ -94,7 +94,7 @@ test.describe('type quiz with gen2', () => {
       ...gen2Unlocked(),
       wtp_active_gen: 'gen2',
     });
-    await startTypeQuiz(page, { mode: 'type', rounds: 10 });
+    await startTypeQuiz(page, { rounds: 10 });
     const id = await page.evaluate(() => tqCurrent.id);
     expect(id).toBeGreaterThanOrEqual(152);
     expect(id).toBeLessThanOrEqual(251);
@@ -105,7 +105,7 @@ test.describe('type quiz with gen2', () => {
       ...gen2Unlocked(),
       wtp_active_gen: 'gen2',
     });
-    await startTypeQuiz(page, { mode: 'type', rounds: 10 });
+    await startTypeQuiz(page, { rounds: 10 });
     await answerTypeQuiz(page, { correct: true });
     const score = await page.evaluate(() => tqScore);
     expect(score).toBeGreaterThanOrEqual(1);

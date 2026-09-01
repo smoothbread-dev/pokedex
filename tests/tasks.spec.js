@@ -135,7 +135,7 @@ test.describe('streak tasks', () => {
 test.describe('type quiz tasks', () => {
   test('awards tq_grade_a and tq_grade_s on all-correct 10-round quiz', async ({ page }) => {
     await openApp(page);
-    await startTypeQuiz(page, { mode: 'type', rounds: 10 });
+    await startTypeQuiz(page, { rounds: 10 });
     for (let i = 0; i < 10; i++) {
       await answerTypeQuiz(page, { correct: true });
       if (i < 9) await page.waitForFunction(() => tqRoundActive === true);
@@ -149,7 +149,7 @@ test.describe('type quiz tasks', () => {
   test('awards tq_perfect on 100% accuracy with 20+ rounds', async ({ page }) => {
     test.setTimeout(90000);
     await openApp(page);
-    await startTypeQuiz(page, { mode: 'type', rounds: 20 });
+    await startTypeQuiz(page, { rounds: 20 });
     for (let i = 0; i < 20; i++) {
       await answerTypeQuiz(page, { correct: true });
       if (i < 19) await page.waitForFunction(() => tqRoundActive === true, null, { timeout: 5000 });

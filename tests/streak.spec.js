@@ -28,7 +28,7 @@ test.describe('play streak', () => {
 
   test('completing a TQ game sets streak to 1 on first play', async ({ page }) => {
     await openApp(page);
-    await startTypeQuiz(page, { mode: 'type', rounds: 10 });
+    await startTypeQuiz(page, { rounds: 10 });
     await page.evaluate(() => { tqQueue = []; });
     await answerTypeQuiz(page, { correct: true });
     await expect(page.locator('#tq-end-screen')).toHaveClass(/active/, { timeout: 10000 });

@@ -11,13 +11,8 @@ test('shows the Pokémon name and four type choices', async ({ page }) => {
 });
 
 test('"guess type" rounds ask for the type', async ({ page }) => {
-  await startTypeQuiz(page, { mode: 'type', rounds: 10 });
+  await startTypeQuiz(page, { rounds: 10 });
   await expect(page.locator('#tq-question-label')).toHaveText('What type?');
-});
-
-test('"guess weakness" rounds ask for a weakness', async ({ page }) => {
-  await startTypeQuiz(page, { mode: 'weakness', rounds: 10 });
-  await expect(page.locator('#tq-question-label')).toHaveText('Weak to?');
 });
 
 test('a correct answer scores 10 and marks the chosen option', async ({ page }) => {

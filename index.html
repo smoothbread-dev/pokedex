@@ -156,7 +156,7 @@ body {
 .settings-section { width: 100%; }
 .settings-label { font-size: 0.8rem; color: #aaa; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.diff-btn, .round-btn, .tq-round-btn, .tq-mode-btn, .gen-btn {
+.diff-btn, .round-btn, .tq-round-btn, .gen-btn {
   padding: 0.5rem 1rem;
   border: 2px solid #0f3460;
   border-radius: 8px;
@@ -167,12 +167,12 @@ body {
   transition: border-color 0.15s;
   min-height: 44px;
 }
-.diff-btn.selected, .round-btn.selected, .tq-round-btn.selected, .tq-mode-btn.selected, .gen-btn.selected {
+.diff-btn.selected, .round-btn.selected, .tq-round-btn.selected, .gen-btn.selected {
   border-color: #f5c842;
   color: #f5c842;
   font-weight: 700;
 }
-.diff-btn:hover, .round-btn:hover, .tq-round-btn:hover, .tq-mode-btn:hover, .gen-btn:hover { border-color: #f5c842; }
+.diff-btn:hover, .round-btn:hover, .tq-round-btn:hover, .gen-btn:hover { border-color: #f5c842; }
 .gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .gen-btn:disabled:hover { border-color: #0f3460; }
 
@@ -971,7 +971,7 @@ body {
 <!-- ══ HUB ══════════════════════════════════════════════════════════════════ -->
 <div id="hub-screen" class="screen active">
   <div class="hub-title">PokéDex</div>
-  <div class="hub-subtitle">Gen I — Kanto Edition</div>
+  <div class="hub-subtitle" id="hub-subtitle">Gen I — Kanto Edition</div>
   <div id="streak-slot" class="streak-slot" style="display:none;">
     <span class="streak-fire">🔥</span>
     <span id="streak-count">0</span>
@@ -1246,14 +1246,6 @@ body {
     <button id="tq-help-btn" class="help-btn" aria-label="Rewards info">ℹ</button>
   </div>
   <div class="settings-section">
-    <div class="settings-label">Mode</div>
-    <div class="btn-row">
-      <button class="tq-mode-btn" data-mode="type">Guess Type</button>
-      <button class="tq-mode-btn" data-mode="weakness">Guess Weakness</button>
-      <button class="tq-mode-btn selected" data-mode="mixed">Mixed</button>
-    </div>
-  </div>
-  <div class="settings-section">
     <div class="settings-label">Rounds</div>
     <div class="btn-row">
       <button class="tq-round-btn" data-rounds="10">10</button>
@@ -1458,13 +1450,6 @@ document.getElementById('tqe-back-btn').addEventListener('click', () => showScre
 document.getElementById('tqr-wrong-btn').addEventListener('click', () => setTqReviewFilter('wrong'));
 document.getElementById('tqr-all-btn').addEventListener('click', () => setTqReviewFilter('all'));
 
-document.querySelectorAll('.tq-mode-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tq-mode-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    tqMode = btn.dataset.mode;
-  });
-});
 </script>
 <script>
 if ('serviceWorker' in navigator) {
