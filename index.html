@@ -156,7 +156,7 @@ body {
 .settings-section { width: 100%; }
 .settings-label { font-size: 0.8rem; color: #aaa; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.diff-btn, .round-btn, .tq-round-btn, .tq-mode-btn {
+.diff-btn, .round-btn, .tq-round-btn, .tq-mode-btn, .gen-btn {
   padding: 0.5rem 1rem;
   border: 2px solid #0f3460;
   border-radius: 8px;
@@ -167,12 +167,14 @@ body {
   transition: border-color 0.15s;
   min-height: 44px;
 }
-.diff-btn.selected, .round-btn.selected, .tq-round-btn.selected, .tq-mode-btn.selected {
+.diff-btn.selected, .round-btn.selected, .tq-round-btn.selected, .tq-mode-btn.selected, .gen-btn.selected {
   border-color: #f5c842;
   color: #f5c842;
   font-weight: 700;
 }
-.diff-btn:hover, .round-btn:hover, .tq-round-btn:hover, .tq-mode-btn:hover { border-color: #f5c842; }
+.diff-btn:hover, .round-btn:hover, .tq-round-btn:hover, .tq-mode-btn:hover, .gen-btn:hover { border-color: #f5c842; }
+.gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.gen-btn:disabled:hover { border-color: #0f3460; }
 
 /* ── Primary buttons */
 .primary-btn {
