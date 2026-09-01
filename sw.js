@@ -1,4 +1,4 @@
-var CACHE_NAME = 'pokedex-cache';
+var CACHE_NAME = 'pokedex-cache-v2';
 
 var APP_SHELL = [
   './',

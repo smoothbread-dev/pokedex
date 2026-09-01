@@ -284,14 +284,150 @@ localStorage.setItem('wtp_total_points', String(totalPts));
 
 ---
 
-## Long-term — Gen Unlock Progression
+## Chunk 13 — Gen 3 Unlock (Hoenn) + Dynamic Hub Card
 
-Chunk 8 implements Gen 2. Gen 3–9 follow the same pattern established there. Each additional gen requires its own data array in `data.js` and a corresponding TYPE_CHART variant if new types are introduced (Fairy added in Gen 6). No structural code changes beyond Chunk 8 — gen selector already reads from `wtp_unlocked_gens` generically.
+**Depends on: Chunk 8 (Gen 2 Unlock — shipped).**
 
-- Unlocked gens stored in `localStorage`
-- Settings screen gets a gen selector (unlocked gens only)
-- Each gen needs its own POKEMON + TYPES array in `data.js`
-- ID ranges: Gen1 1–151, Gen2 152–251, Gen3 252–386, Gen4 387–493, Gen5 494–649, Gen6 650–721, Gen7 722–809, Gen8 810–905, Gen9 906–1025
+Adds Gen 3 (Hoenn, 135 Pokémon, IDs 252–386). Earning the Gen 2 completion badge unlocks Gen 3, following the same pattern as Gen 1 → Gen 2. Also fixes the Pokédex hub card description which hardcodes "Browse all 151" — it should update dynamically based on unlocked gens.
+
+### Architectural refactor: GEN_CONFIG lookup table
+
+The current gen helpers (`genPool()`, `genTypes()`, `genOffset()`, `genAliases()`) use hardcoded gen1/gen2 ternaries. Adding Gen 3 as another ternary layer would be fragile. Refactor to a config lookup:
+
+```js
+const GEN_CONFIG = {
+  gen1: { pool: POKEMON, types: TYPES, offset: 0, aliases: ALIASES, filterTypes: GEN1_TYPES, count: 151, region: 'Kanto' },
+  gen2: { pool: POKEMON_GEN2, types: TYPES_GEN2, offset: 151, aliases: ALIASES_GEN2, filterTypes: GEN2_TYPES, count: 100, region: 'Johto' },
+  gen3: { pool: POKEMON_GEN3, types: TYPES_GEN3, offset: 251, aliases: ALIASES_GEN3, filterTypes: GEN3_TYPES, count: 135, region: 'Hoenn' },
+};
+function genPool()    { return GEN_CONFIG[currentGen].pool; }
+function genTypes()   { return GEN_CONFIG[currentGen].types; }
+function genOffset()  { return GEN_CONFIG[currentGen].offset; }
+function genAliases() { return GEN_CONFIG[currentGen].aliases; }
+```
+
+Update the stale-gen guard to be generic:
+```js
+if (currentGen !== 'gen1' && !unlockedGens[currentGen]) currentGen = 'gen1';
+```
+
+Update `buildPokedex()` filter bar to use `GEN_CONFIG[currentGen].filterTypes`.
+
+### Gen 3 data arrays — `js/data.js`
+
+- **`POKEMON_GEN3`** — 135 names: treecko through deoxys (IDs 252–386)
+- **`TYPES_GEN3`** — 135 parallel type strings with modern typing
+- **`ALIASES_GEN3`** — alternate spellings (e.g. `"deoxys": ["deoxys-normal"]`)
+- **`GEN3_TYPES`** — same as `GEN2_TYPES` (Dark, Steel present; Fairy is Gen 6). Placed in `js/game.js` alongside `GEN1_TYPES` and `GEN2_TYPES`.
+
+### Generic `renderGenSelectors()`
+
+Replace the hardcoded `unlockedGens.gen2` show/hide with a generic check:
+
+```js
+function renderGenSelectors() {
+  const anyUnlocked = Object.keys(unlockedGens).length > 0;
+  ['wtp-gen-section', 'tq-gen-section', 'dex-gen-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = anyUnlocked ? '' : 'none';
+  });
+  document.querySelectorAll('.gen-btn').forEach(btn => {
+    const gen = btn.dataset.gen;
+    btn.classList.toggle('selected', gen === currentGen);
+    if (gen !== 'gen1') {
+      btn.disabled = !unlockedGens[gen];
+      btn.textContent = unlockedGens[gen]
+        ? 'Gen ' + gen.slice(3)
+        : 'Gen ' + gen.slice(3) + ' 🔒';
+    }
+  });
+  updateDexHubDesc();
+}
+```
+
+### `checkCompletionBadge()` — Gen 3 unlock + badge
+
+After the existing Gen 2 badge check, add:
+- If `completionBadges.gen2` and gen3 not unlocked → unlock gen3, show toast "🎉 Hoenn unlocked!"
+- If gen3 unlocked and no gen3 badge → check if all 135 Gen 3 Pokémon caught → award badge, show toast "🏆 Gen III badge earned!"
+
+### Gen selector markup — `index.html`
+
+Add a Gen 3 button to each of the 3 gen selector sections (`wtp-gen-section`, `tq-gen-section`, `dex-gen-section`):
+```html
+<button class="gen-btn" data-gen="gen3" disabled>Gen 3 🔒</button>
+```
+
+### Items screen — Gen 3 badge
+
+Add `<div id="badge-gen3" style="display:none"></div>` after `#badge-gen2` in `index.html`.
+
+In `renderItemsScreen()`, add Gen 3 badge block after Gen 2 (same pattern):
+- Hidden when gen3 locked
+- Placeholder: "Catch all 135 Gen III Pokémon to earn the Gen III badge"
+- Earned: "🏆 Gen III — Hoenn Master"
+
+### Dynamic Pokédex hub card description
+
+The hub card currently hardcodes "Browse all 151". Fix:
+
+1. Give the desc div an id: `<div class="hub-card-desc" id="hub-dex-desc">`
+2. Add `updateDexHubDesc()`:
+```js
+function updateDexHubDesc() {
+  const el = document.getElementById('hub-dex-desc');
+  if (!el) return;
+  let total = 151;
+  if (unlockedGens.gen2) total += 100;
+  if (unlockedGens.gen3) total += 135;
+  el.textContent = 'Browse all ' + total + ' — search, filter and view details';
+}
+```
+Called from `renderGenSelectors()` and at boot.
+
+### Files
+
+| File | Change |
+|---|---|
+| `js/data.js` | `POKEMON_GEN3`, `TYPES_GEN3`, `ALIASES_GEN3` arrays (135 entries each) |
+| `js/game.js` | `GEN_CONFIG` lookup table replacing ternary helpers, `GEN3_TYPES`, generic `renderGenSelectors()`, Gen 3 blocks in `checkCompletionBadge()`, Gen 3 badge in `renderItemsScreen()`, `updateDexHubDesc()` |
+| `index.html` | Gen 3 buttons in 3 gen-section divs, `#badge-gen3` div, `id="hub-dex-desc"` on hub card desc |
+| `tests/gen3.spec.js` | New spec mirroring gen2.spec.js structure |
+| `README.md` | Update to "Gen I, II & III Edition", document Gen 3 unlock, update Pokédex description |
+| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+| `sw.js` | Bump `CACHE_NAME` to `pokedex-cache-v3` |
+
+### `tests/gen3.spec.js` coverage
+
+- Gen selector: gen3 button enabled when unlocked, hidden when locked
+- Unlock trigger: catching all 100 gen2 Pokémon unlocks gen3
+- WTP with gen3: uses IDs 252–386, correct answer adds to caught dex
+- Type quiz with gen3: uses IDs 252–386, correct answers accepted
+- Pokedex with gen3: 135 cards, /135 denominator, Dark/Steel filter buttons
+- Gen1 unaffected: still 151 cards when switching back
+- Items screen gen3 badge: hidden/placeholder/earned states
+- Hub card description: "Browse all 151" → "Browse all 251" → "Browse all 386" as gens unlock
+
+### Verification
+
+1. Fresh save — no gen selectors, hub card says "Browse all 151"
+2. Seed all 151 caught → gen1 badge + gen2 unlock, hub card says "Browse all 251"
+3. Seed all 251 caught → gen2 badge + gen3 unlock, hub card says "Browse all 386"
+4. Select Gen 3 in WTP — only Hoenn Pokémon (IDs 252–386)
+5. Select Gen 3 in Type Quiz — correct answers accepted
+6. Pokedex with Gen 3 — 135 cards, Dark/Steel filter buttons
+7. Switch back to Gen 1 — 151 cards, original filter bar
+8. Items screen — Gen 3 badge hidden/placeholder/earned states correct
+9. `npm test` — all existing + new tests pass
+
+---
+
+## Long-term — Gen 4–9 Unlock Progression
+
+Chunks 8 and 13 establish the gen unlock pattern. Gen 4–9 follow the same structure — each requires its own data arrays in `data.js`, a `GEN_CONFIG` entry, and markup for the gen button and badge. No structural code changes beyond what Chunk 13 introduces with `GEN_CONFIG`.
+
+- ID ranges: Gen4 387–493, Gen5 494–649, Gen6 650–721, Gen7 722–809, Gen8 810–905, Gen9 906–1025
+- Fairy type introduced in Gen 6 — `filterTypes` for Gen 6+ needs to include Fairy
 - PokeAPI: pixel art, official artwork, and Showdown GIFs confirmed available for all gens 1–9
 
 ---
