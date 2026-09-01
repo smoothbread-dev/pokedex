@@ -119,7 +119,7 @@ function updateStreak() {
 const ITEM_META = {
   unseen_lure:   { icon: '🔭', name: 'Unseen Lure',   desc: '60% of rounds will be Pokémon you haven\'t seen yet', source: 'Who\'s That Pokémon — all difficulties' },
   uncaught_lure: { icon: '🎣', name: 'Uncaught Lure', desc: '60% of rounds will be Pokémon you haven\'t caught yet', source: 'Who\'s That Pokémon — all difficulties' },
-  shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game (1/16 with Gen I badge)', source: 'Type Quiz — Grade S (20+ rounds)' },
+  shiny_charm:   { icon: '✨', name: 'Shiny Charm',    desc: 'Shiny rate → 1/32 for one game (1/16 with matching gen badge)', source: 'Type Quiz — Grade S (20+ rounds)' },
 };
 
 // ── Completion badges
@@ -412,9 +412,10 @@ function clearPending() {
 }
 
 function getShinyRate() {
-  if (activeItem === 'shiny_charm' && completionBadges.gen1) return 1 / 16;
+  var hasBadge = !!completionBadges[currentGen];
+  if (activeItem === 'shiny_charm' && hasBadge) return 1 / 16;
   if (activeItem === 'shiny_charm') return 1 / 32;
-  if (completionBadges.gen1) return 1 / 64;
+  if (hasBadge) return 1 / 64;
   return 1 / 128;
 }
 
@@ -424,7 +425,7 @@ function checkCompletionBadge(silent) {
     if (allCaught) {
       completionBadges.gen1 = true;
       try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
-      if (!silent) showToast('🏆 Gen I badge earned! Shiny rate → 1/64 permanently.');
+      if (!silent) showToast('🏆 Gen I badge earned! Gen 1 shiny rate → 1/64.');
     }
   }
   if (completionBadges.gen1 && !unlockedGens.gen2) {
@@ -438,7 +439,7 @@ function checkCompletionBadge(silent) {
     if (allGen2) {
       completionBadges.gen2 = true;
       try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
-      if (!silent) showToast('🏆 Gen II badge earned!');
+      if (!silent) showToast('🏆 Gen II badge earned! Gen 2 shiny rate → 1/64.');
     }
   }
   renderItemsScreen();
@@ -507,7 +508,7 @@ function renderItemsScreen() {
   if (badgeEl) {
     if (completionBadges.gen1) {
       badgeEl.className = 'badge-earned';
-      badgeEl.innerHTML = '🏆 Gen I — Pokémon Master<br><small>Shiny rate: 1/64 (1/16 with Shiny Charm)</small>';
+      badgeEl.innerHTML = '🏆 Gen I — Kanto Master<br><small>Gen 1 shiny rate: 1/64 (1/16 with Shiny Charm)</small>';
     } else {
       badgeEl.className = 'badge-placeholder';
       badgeEl.textContent = 'Catch all 151 Pokémon to earn the Gen I badge';
@@ -520,7 +521,7 @@ function renderItemsScreen() {
       badge2.style.display = '';
       if (completionBadges.gen2) {
         badge2.className = 'badge-earned';
-        badge2.innerHTML = '🏆 Gen II — Johto Master';
+        badge2.innerHTML = '🏆 Gen II — Johto Master<br><small>Gen 2 shiny rate: 1/64 (1/16 with Shiny Charm)</small>';
       } else {
         badge2.className = 'badge-placeholder';
         badge2.textContent = 'Catch all 100 Gen II Pokémon to earn the Gen II badge';
@@ -556,6 +557,15 @@ function renderGenSelectors() {
       btn.textContent = unlockedGens.gen2 ? 'Gen 2' : 'Gen 2 🔒';
     }
   });
+  updateDexHubDesc();
+}
+
+function updateDexHubDesc() {
+  var el = document.getElementById('hub-dex-desc');
+  if (!el) return;
+  var total = 151;
+  if (unlockedGens.gen2) total += 100;
+  el.textContent = 'Browse all ' + total + ' — search, filter and view details';
 }
 
 function setGen(gen) {

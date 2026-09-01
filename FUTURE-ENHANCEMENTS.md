@@ -284,11 +284,11 @@ localStorage.setItem('wtp_total_points', String(totalPts));
 
 ---
 
-## Chunk 13 — Gen 3 Unlock (Hoenn) + Dynamic Hub Card
+## Chunk 13 — Gen 3 Unlock (Hoenn)
 
 **Depends on: Chunk 8 (Gen 2 Unlock — shipped).**
 
-Adds Gen 3 (Hoenn, 135 Pokémon, IDs 252–386). Earning the Gen 2 completion badge unlocks Gen 3, following the same pattern as Gen 1 → Gen 2. Also fixes the Pokédex hub card description which hardcodes "Browse all 151" — it should update dynamically based on unlocked gens.
+Adds Gen 3 (Hoenn, 135 Pokémon, IDs 252–386). Earning the Gen 2 completion badge unlocks Gen 3, following the same pattern as Gen 1 → Gen 2. Dynamic Pokédex hub card description already shipped — `updateDexHubDesc()` in `game.js` updates the count based on unlocked gens.
 
 ### Architectural refactor: GEN_CONFIG lookup table
 
@@ -367,31 +367,13 @@ In `renderItemsScreen()`, add Gen 3 badge block after Gen 2 (same pattern):
 - Placeholder: "Catch all 135 Gen III Pokémon to earn the Gen III badge"
 - Earned: "🏆 Gen III — Hoenn Master"
 
-### Dynamic Pokédex hub card description
-
-The hub card currently hardcodes "Browse all 151". Fix:
-
-1. Give the desc div an id: `<div class="hub-card-desc" id="hub-dex-desc">`
-2. Add `updateDexHubDesc()`:
-```js
-function updateDexHubDesc() {
-  const el = document.getElementById('hub-dex-desc');
-  if (!el) return;
-  let total = 151;
-  if (unlockedGens.gen2) total += 100;
-  if (unlockedGens.gen3) total += 135;
-  el.textContent = 'Browse all ' + total + ' — search, filter and view details';
-}
-```
-Called from `renderGenSelectors()` and at boot.
-
 ### Files
 
 | File | Change |
 |---|---|
 | `js/data.js` | `POKEMON_GEN3`, `TYPES_GEN3`, `ALIASES_GEN3` arrays (135 entries each) |
-| `js/game.js` | `GEN_CONFIG` lookup table replacing ternary helpers, `GEN3_TYPES`, generic `renderGenSelectors()`, Gen 3 blocks in `checkCompletionBadge()`, Gen 3 badge in `renderItemsScreen()`, `updateDexHubDesc()` |
-| `index.html` | Gen 3 buttons in 3 gen-section divs, `#badge-gen3` div, `id="hub-dex-desc"` on hub card desc |
+| `js/game.js` | `GEN_CONFIG` lookup table replacing ternary helpers, `GEN3_TYPES`, generic `renderGenSelectors()`, Gen 3 blocks in `checkCompletionBadge()`, Gen 3 badge in `renderItemsScreen()`, extend `updateDexHubDesc()` for gen3 |
+| `index.html` | Gen 3 buttons in 3 gen-section divs, `#badge-gen3` div |
 | `tests/gen3.spec.js` | New spec mirroring gen2.spec.js structure |
 | `README.md` | Update to "Gen I, II & III Edition", document Gen 3 unlock, update Pokédex description |
 | `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
