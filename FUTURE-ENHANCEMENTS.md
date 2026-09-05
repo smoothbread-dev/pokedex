@@ -404,6 +404,226 @@ In `renderItemsScreen()`, add Gen 3 badge block after Gen 2 (same pattern):
 
 ---
 
+## Chunk 14 — Pokédex Shiny Filter
+
+**Depends on: nothing (current codebase).**
+
+Add a shiny filter to the Pokédex so players can view only Pokémon whose shiny form they've caught for the active generation. Helps shiny hunters track their progress at a glance.
+
+### UI
+
+A toggle button (e.g. "✨ Shiny") next to the search bar or above the filter bar. When active:
+- Only Pokémon present in `shinyDex` for the current gen are shown
+- Cards display the shiny artwork instead of normal artwork
+- The toggle button gets a highlighted/active state
+- Progress text updates to show shiny count (e.g. "Shinies: 12 / 151")
+
+When toggled off, the Pokédex returns to normal view with the current type filter and search preserved.
+
+### Implementation
+
+**`js/game.js`**:
+- Add `let dexShinyFilter = false;` state variable
+- Add `toggleShinyFilter()` function: flips the flag, updates button state, calls `applyDexSearch()`
+- Update `applyDexSearch()`: when `dexShinyFilter` is true, hide cards whose ID is not in `shinyDex`
+- Update `buildPokedex()`: when shiny filter is active, use `SPRITE_OFFICIAL_SHINY(id)` for card images
+- Update `refreshDexMarks()`: update progress text to show shiny count when filter is active
+- Reset `dexShinyFilter = false` when switching gens (in gen button click handler)
+
+**`index.html`**:
+- Add shiny filter toggle button in Pokédex screen (near `#dex-search` or `#pokedex-filter`)
+- CSS for active/inactive shiny filter button state (gold highlight when active)
+
+### Files
+
+| File | Change |
+|---|---|
+| `js/game.js` | `dexShinyFilter` state, `toggleShinyFilter()`, update `applyDexSearch()` and `buildPokedex()` for shiny mode |
+| `index.html` | Shiny filter toggle button markup and CSS |
+| `tests/pokedex.spec.js` | Test shiny filter toggle, card visibility, artwork swap, progress text |
+| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+
+### Verification
+
+1. Open Pokédex with no shinies caught — toggle shiny filter → empty grid, progress shows "0 / 151"
+2. Register a shiny (e.g. Pikachu) — toggle shiny filter → only Pikachu shown with shiny artwork
+3. Switch gens — shiny filter resets to off
+4. Combine shiny filter with type filter — only matching shinies of that type shown
+5. Toggle off — normal Pokédex view restored
+6. `npm test` — all tests pass
+
+---
+
+## Chunk 15 — Pokédex Type Filter Redesign
+
+**Depends on: nothing (current codebase).**
+
+The current type filter bar displays 16–18 individual buttons in a single row, which is too long and cluttered — especially on mobile. Replace with a compact dropdown/select menu.
+
+### Current state
+
+`buildPokedex()` creates one `<button class="type-filter-btn">` per type inside `#pokedex-filter`. Gen 1 has 16 buttons (All + 15 types), Gen 2 has 18 buttons (All + 17 types). They wrap awkwardly on narrow screens.
+
+### UI
+
+Replace the button row with a styled `<select>` dropdown (or a custom dropdown that matches the app's dark theme):
+- Default option: "All Types"
+- One `<option>` per type, styled with the type's color if possible (custom dropdown) or plain text (native `<select>`)
+- Selecting a type calls `applyDexFilter()` as before
+- Compact: takes one line regardless of how many types exist
+
+A custom dropdown is preferred over a native `<select>` to maintain visual consistency with type badge colors. The dropdown trigger button shows the currently selected type badge (or "All Types"), and the dropdown panel shows a grid of type badges (2–3 columns) that closes on selection.
+
+### Implementation
+
+**`js/game.js`**:
+- Replace the filter button creation loop in `buildPokedex()` with a dropdown component
+- `renderTypeDropdown(types)`: creates the dropdown trigger + panel with type badges
+- Click on trigger toggles the panel open/closed
+- Click on a type badge calls `applyDexFilter()` and closes the panel
+- Click outside the panel closes it
+
+**`index.html`**:
+- Remove or repurpose `.type-filter-btn` CSS
+- Add CSS for `.type-dropdown`, `.type-dropdown-trigger`, `.type-dropdown-panel` (absolute-positioned grid of type badges)
+
+### Files
+
+| File | Change |
+|---|---|
+| `js/game.js` | Replace filter button loop in `buildPokedex()` with `renderTypeDropdown()` |
+| `index.html` | CSS for dropdown component; remove unused `.type-filter-btn` styles |
+| `tests/pokedex.spec.js` | Update filter tests for dropdown instead of button row |
+| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+
+### Verification
+
+1. Open Pokédex — type dropdown shows "All Types" in a compact trigger button
+2. Click trigger — panel opens with type badges in a grid
+3. Select "Fire" — panel closes, grid filters to Fire types, trigger shows "Fire"
+4. Select "All Types" — full grid restored
+5. Switch gens — dropdown rebuilds with correct types (Dark/Steel added for Gen 2)
+6. Mobile: dropdown fits cleanly on narrow screens
+7. `npm test` — all tests pass
+
+---
+
+## Chunk 16 — Lure Drop Rate Rework
+
+**Depends on: nothing (current codebase).**
+
+Currently, lures are guaranteed after every WTP game — the item bag fills up quickly and lures feel like a freebie rather than a reward. Change to a probability-based system where higher difficulty means higher drop chance, making lure drops feel more meaningful.
+
+### Current behavior
+
+In `dropItems()` (`js/game.js`):
+- Easy: always 1 lure
+- Normal: always 1 lure (30% chance of 2)
+- Hard: always 2 lures
+- Lures are split evenly between Unseen Lure and Uncaught Lure
+
+### New behavior
+
+| Difficulty | Drop chance | Quantity (if triggered) |
+|---|---|---|
+| Easy | 50% | 1 lure |
+| Normal | 75% | 1 lure (30% chance of 2) |
+| Hard | 100% | 2 lures |
+
+When the drop does not trigger, no lures are awarded. The PotD doubling bonus still applies when drops trigger. Distribution between Unseen/Uncaught Lure stays the same.
+
+### Implementation
+
+In `dropItems()` (`js/game.js`), wrap the lure assignment in a probability check:
+
+```js
+let lures = 0;
+const dropChance = difficulty === 'easy' ? 0.5 : difficulty === 'normal' ? 0.75 : 1;
+if (Math.random() < dropChance) {
+  if (difficulty === 'easy') lures = 1;
+  else if (difficulty === 'normal') lures = Math.random() < 0.3 ? 2 : 1;
+  else if (difficulty === 'hard') lures = 2;
+}
+```
+
+### End-of-game feedback
+
+Update the drops display to show "No items dropped" when `lures === 0`, so the player understands they didn't earn drops this round.
+
+### Files
+
+| File | Change |
+|---|---|
+| `js/game.js` | `dropItems()` — add probability gate before lure assignment |
+| `index.html` | "No items dropped" message styling (if needed) |
+| `tests/items.spec.js` | Test: Easy drops lures ~50% of the time; Normal ~75%; Hard always; no-drop case shows no items |
+| `README.md` | Update item drop documentation |
+| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+
+### Verification
+
+1. Play 10+ Easy games — lures drop roughly half the time
+2. Play 10+ Normal games — lures drop roughly 3/4 of the time
+3. Play Hard — lures always drop
+4. When no lures drop, end screen shows "No items dropped" (or similar)
+5. PotD bonus still doubles lures when drops trigger
+6. `npm test` — all tests pass
+
+---
+
+## Chunk 17 — Gen Badge Effect Display in WTP
+
+**Depends on: nothing (current codebase).**
+
+When the player has earned the gen completion badge for the current generation, show a visual indicator during WTP gameplay so they know their boosted shiny rate is active. Currently the badge's effect (halved shiny denominator) applies silently — there's no in-game indication.
+
+### Current behavior
+
+`getShinyRate()` checks `completionBadges[currentGen]` to determine the shiny rate:
+- No badge, no charm: 1/128
+- Badge only: 1/64
+- Shiny Charm only: 1/32
+- Badge + Shiny Charm: 1/16
+
+The badge effect is invisible during gameplay. The equipped Shiny Charm shows in `#game-active-item`, but the badge has no equivalent display.
+
+### UI
+
+Add a badge indicator to the WTP game header (near the score or active item display):
+- When `completionBadges[currentGen]` is truthy: show a small badge icon with tooltip text (e.g. "🏆 Gen I Badge — Shiny rate boosted")
+- When combined with Shiny Charm: update the active item description to reflect the combined rate (e.g. "✨ Shiny Charm + 🏆 Badge → 1/16")
+- When no badge: indicator is hidden
+
+### Implementation
+
+**`js/game.js`**:
+- In `startGame()` or `nextRound()`, after setting up `#game-active-item`, check `completionBadges[currentGen]`
+- If badge is active, show `#game-badge-indicator` with the badge icon and current shiny rate
+- If both badge and Shiny Charm are active, combine the display
+
+**`index.html`**:
+- Add `<div id="game-badge-indicator" style="display:none"></div>` in the game screen header area
+- CSS for the badge indicator (small, unobtrusive, positioned near the active item or score)
+
+### Files
+
+| File | Change |
+|---|---|
+| `js/game.js` | Show/hide `#game-badge-indicator` in `startGame()`/`nextRound()` based on `completionBadges[currentGen]` |
+| `index.html` | `#game-badge-indicator` div in game screen, CSS styling |
+| `tests/whos-that.spec.js` | Test: badge indicator visible when badge earned, hidden when not, combined display with Shiny Charm |
+| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+
+### Verification
+
+1. Play WTP Gen 1 without badge — no badge indicator shown
+2. Earn Gen 1 badge, play WTP Gen 1 — badge indicator visible with "🏆" and shiny rate info
+3. Equip Shiny Charm + badge — combined display shows 1/16 rate
+4. Switch to Gen 2 (no badge) — badge indicator hidden
+5. `npm test` — all tests pass
+
+---
+
 ## Long-term — Gen 4–9 Unlock Progression
 
 Chunks 8 and 13 establish the gen unlock pattern. Gen 4–9 follow the same structure — each requires its own data arrays in `data.js`, a `GEN_CONFIG` entry, and markup for the gen button and badge. No structural code changes beyond what Chunk 13 introduces with `GEN_CONFIG`.

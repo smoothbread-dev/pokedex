@@ -97,6 +97,14 @@ test.describe('detail modal', () => {
     await expect(page.locator('#modal-loading')).toBeHidden();
   });
 
+  test('locks background scroll while open and restores on close', async ({ page }) => {
+    const overflow = await page.evaluate(() => document.body.style.overflow);
+    expect(overflow).toBe('hidden');
+    await page.click('#dex-modal-close');
+    const restored = await page.evaluate(() => document.body.style.overflow);
+    expect(restored).toBe('');
+  });
+
   test('closes via the close button and the backdrop', async ({ page }) => {
     await page.click('#dex-modal-close');
     await expect(page.locator('#dex-modal')).not.toHaveClass(/open/);

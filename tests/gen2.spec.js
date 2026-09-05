@@ -142,6 +142,20 @@ test.describe('pokedex with gen2', () => {
     await expect(page.locator('.type-filter-btn:text("Steel")')).toBeVisible();
   });
 
+  test('gen2 pokemon modal shows correct type, not Normal fallback', async ({ page }) => {
+    const gen2Seen = Array.from({ length: 100 }, (_, i) => 152 + i);
+    await openApp(page, {
+      ...gen2Unlocked(),
+      wtp_active_gen: 'gen2',
+      wtp_seen_dex: JSON.stringify([...ALL_GEN1, ...gen2Seen]),
+    });
+    await openPokedex(page);
+    await page.click('.dex-card[data-id="155"]');
+    await expect(page.locator('#dex-modal')).toHaveClass(/open/);
+    await expect(page.locator('#modal-types')).toContainText('Fire');
+    await expect(page.locator('#modal-types')).not.toContainText('Normal');
+  });
+
   test('switching to gen1 in pokedex shows 151 cards', async ({ page }) => {
     await openApp(page, {
       ...gen2Unlocked(),
@@ -188,6 +202,21 @@ test.describe('items screen gen2 badge', () => {
     await openApp(page, {
       ...gen2Unlocked(),
       wtp_caught_dex: JSON.stringify([...ALL_GEN1, ...gen2Ids]),
+    });
+    await page.click('#hub-items-btn');
+    await expect(page.locator('#badge-gen2.badge-earned')).toBeVisible();
+  });
+
+  test('gen2 badge appears without refresh after earning', async ({ page }) => {
+    const gen2Almost = Array.from({ length: 99 }, (_, i) => 152 + i);
+    await openApp(page, {
+      ...gen2Unlocked(),
+      wtp_caught_dex: JSON.stringify([...ALL_GEN1, ...gen2Almost]),
+    });
+    await page.evaluate(() => {
+      caughtDex.add(251);
+      localStorage.setItem('wtp_caught_dex', JSON.stringify([...caughtDex]));
+      checkCompletionBadge();
     });
     await page.click('#hub-items-btn');
     await expect(page.locator('#badge-gen2.badge-earned')).toBeVisible();

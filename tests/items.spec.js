@@ -11,6 +11,15 @@ test.describe('items screen navigation', () => {
     expect(await activeScreen(page)).toBe('hub-screen');
   });
 
+  test('back button returns to WTP settings when entered from there', async ({ page }) => {
+    await page.click('#hub-game-btn');
+    expect(await activeScreen(page)).toBe('game-settings-screen');
+    await page.click('#go-to-items-btn');
+    expect(await activeScreen(page)).toBe('items-screen');
+    await page.click('#items-back-btn');
+    expect(await activeScreen(page)).toBe('game-settings-screen');
+  });
+
   test('shows all three items even when counts are zero', async ({ page }) => {
     await page.click('#hub-items-btn');
     await expect(page.locator('.item-row')).toHaveCount(3);

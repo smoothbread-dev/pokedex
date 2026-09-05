@@ -18,6 +18,7 @@ const ITEM_CAP = 3;
 let items = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
 try { Object.assign(items, JSON.parse(localStorage.getItem(ITEMS_LS_KEY) || '{}')); } catch (e) {}
 let activeItem = null;
+let itemsScreenOrigin = 'hub-screen';
 
 // ── Play streak
 const STREAK_LS_KEY = 'wtp_streak';
@@ -325,6 +326,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (id === 'hub-screen') { renderPotdHub(); renderStreakHub(); updateTasksHubBadge(); }
+  if (id === 'items-screen') renderItemsScreen();
 }
 
 function updateStats() {
@@ -467,7 +469,7 @@ function renderActiveItemRow() {
   } else {
     row.innerHTML = 'None — <button id="go-to-items-btn" class="link-btn">choose in Item Bag →</button>';
     const goBtn = document.getElementById('go-to-items-btn');
-    if (goBtn) goBtn.addEventListener('click', () => { renderItemsScreen(); showScreen('items-screen'); });
+    if (goBtn) goBtn.addEventListener('click', () => { itemsScreenOrigin = 'game-settings-screen'; renderItemsScreen(); showScreen('items-screen'); });
   }
 }
 
@@ -909,7 +911,7 @@ function renderMissedGrid() {
   if (missedPokemon.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   missedPokemon.forEach(({ id, name, guess, shiny }) => {
-    const typeStr = TYPES[id - 1] || 'Normal';
+    const typeStr = genTypes()[id - 1 - genOffset()] || 'Normal';
     const wkMap = computeWeaknesses(typeStr);
     const bigWeaks = Object.keys(wkMap).filter(t => wkMap[t] >= 2);
     const card = document.createElement('div');
@@ -1039,7 +1041,7 @@ function updateModalArtwork() {
 
 function openDexModal(id, name, showShiny = false) {
   const modal = document.getElementById('dex-modal');
-  const typeStr = TYPES[id - 1] || 'Normal';
+  const typeStr = genTypes()[id - 1 - genOffset()] || 'Normal';
   const locked = isHidden(id);
   // showShiny comes from the missed grid, where you just encountered the shiny yourself.
   const shinyLocked = dexSettings.discovery && !shinyDex.has(id) && !showShiny;
@@ -1060,6 +1062,7 @@ function openDexModal(id, name, showShiny = false) {
   typesEl.innerHTML = '';
   if (locked) {
     modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
     document.getElementById('modal-tab-weaknesses').style.display = 'none';
     document.getElementById('modal-tab-stats').style.display = 'none';
     return;
@@ -1114,6 +1117,7 @@ function openDexModal(id, name, showShiny = false) {
   document.getElementById('modal-cry-btn').onclick = () => playCry(id);
 
   modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
 
   fetchStats(id).then(stats => {
     if (activeDexId !== id) return;
@@ -1123,6 +1127,7 @@ function openDexModal(id, name, showShiny = false) {
 
 function closeDexModal() {
   document.getElementById('dex-modal').classList.remove('open');
+  document.body.style.overflow = '';
   activeDexId = null;
 }
 
@@ -1523,8 +1528,8 @@ function renderTqReview() {
 document.getElementById('hub-game-btn').addEventListener('click', () => { renderGenSelectors(); renderActiveItemRow(); showScreen('game-settings-screen'); });
 document.getElementById('hub-dex-btn').addEventListener('click', () => { renderGenSelectors(); buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
 document.getElementById('hub-typequiz-btn').addEventListener('click', () => { renderGenSelectors(); showScreen('tq-settings-screen'); });
-document.getElementById('hub-items-btn').addEventListener('click', () => { renderItemsScreen(); showScreen('items-screen'); });
-document.getElementById('items-back-btn').addEventListener('click', () => showScreen('hub-screen'));
+document.getElementById('hub-items-btn').addEventListener('click', () => { itemsScreenOrigin = 'hub-screen'; renderItemsScreen(); showScreen('items-screen'); });
+document.getElementById('items-back-btn').addEventListener('click', () => { showScreen(itemsScreenOrigin); itemsScreenOrigin = 'hub-screen'; });
 document.getElementById('hub-tasks-btn').addEventListener('click', () => { renderTasksScreen(); showScreen('tasks-screen'); });
 document.getElementById('tasks-back-btn').addEventListener('click', () => showScreen('hub-screen'));
 

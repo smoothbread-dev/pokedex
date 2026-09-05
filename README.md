@@ -58,7 +58,7 @@ Catching all 151 Gen 1 Pokémon earns the Gen I Completion Badge and unlocks Joh
 
 - Gen-scoped: 151 Gen 1 or 100 Gen 2 cards, with per-gen progress counters
 - All entries with pixel sprites, filterable by type and searchable by name
-- Detail modal with official artwork, type badges, a **Weaknesses** tab (4× / 2× / ½× / ¼× / 0×) and a **Stats** tab (base stats from PokeAPI, cached per session)
+- Detail modal with official artwork, type badges, a **Weaknesses** tab (4× / 2× / ½× / ¼× / 0×) and a **Stats** tab (base stats from PokeAPI, cached per session); background scroll is locked while the modal is open
 - **Shiny toggle** on the detail card swaps between normal and shiny official artwork
 - **Discovery Mode** silhouettes Pokémon you haven't encountered yet (see below)
 - Cry playback per Pokémon
@@ -78,7 +78,7 @@ Shiny rate tiers (rates stack):
 
 ## Items
 
-The Item Bag holds up to three of each consumable. One item can be equipped before starting a game; it is consumed (count −1) when the game begins and its effect lasts the whole game.
+The Item Bag holds up to three of each consumable and is reachable from the hub or from the Who's That settings screen — the back button returns to whichever screen you came from. One item can be equipped before starting a game; it is consumed (count −1) when the game begins and its effect lasts the whole game.
 
 | Item | Effect |
 |------|--------|
