@@ -1,6 +1,6 @@
-# PokéDex — Gen I & II Edition
+# PokéDex — Gen I, II & III Edition
 
-A browser-based Pokémon hub featuring Gen 1 (151 Kanto) and Gen 2 (100 Johto) Pokémon: a silhouette guessing game, a type/weakness quiz, and a browsable Pokédex.
+A browser-based Pokémon hub featuring Gen 1 (151 Kanto), Gen 2 (100 Johto), and Gen 3 (135 Hoenn) Pokémon: a silhouette guessing game, a type/weakness quiz, and a browsable Pokédex.
 
 ## Play
 
@@ -14,7 +14,7 @@ The hub screen has six sections:
 |---------|-----------|
 | **Who's That?** | Guess the Pokémon from its silhouette |
 | **Type Quiz** | Guess each Pokémon's type or its weaknesses |
-| **Pokédex** | Browse all 151, filter/search, view stats and weaknesses |
+| **Pokédex** | Browse all 386, filter/search, view stats and weaknesses |
 | **Settings** | Site-wide audio and Pokédex options |
 | **Item Bag** | Manage consumable items that modify your next game |
 | **Tasks** | 17 one-time achievements across 6 categories |
@@ -25,9 +25,12 @@ The hub screen has six sections:
 
 | Difficulty | Timer | Answering | Hint cost |
 |------------|-------|-----------|-----------|
+| Beginner | None | 2-choice buttons | Free (category hint) |
 | Easy | 15s | Multiple choice | Free (first letter always shown) |
 | Normal | 10s | Multiple choice | −5 pts |
 | Hard | 6s | 4-choice buttons | Eliminates 1 wrong option (−10 pts) |
+
+Beginner mode is designed for players with zero Pokémon knowledge: type + first letter are shown automatically, the silhouette progressively reveals (brightening at 4s and 7s), scoring is halved (0.5×), and no items drop.
 
 Tap the `ℹ` button next to the Difficulty label on the settings screen for a full breakdown of per-difficulty mechanics and per-mode rewards.
 
@@ -40,6 +43,8 @@ Tap the `ℹ` button next to the Difficulty label on the settings screen for a f
 | Streak ×2 multiplier | at 5 correct in a row |
 | Streak ×3 multiplier | at 10 correct in a row |
 | Familiarity bonus (already caught) | +5 |
+| Shiny bonus (new shiny, correct) | +50 |
+| Shiny bonus (repeat shiny, correct) | +25 |
 | Wrong answer or timeout | 0, streak resets |
 
 Round count is 10 / 25 / 50. Best score persists in `localStorage`. After an answer, the next round waits for the reveal announcement and the audible part of the Pokémon cry before advancing; trailing silence in cry files is capped. The end screen shows an accuracy grade (S/A/B/C) and a **Missed** grid listing every Pokémon you got wrong, with its types, 2× weaknesses, and what you guessed — tap any card to open its Pokédex entry.
@@ -50,14 +55,21 @@ Alternate spellings are accepted (e.g. "Nidoran", "Farfetch'd", "Mr Mime").
 
 Guess Type, Guess Weakness, or Mixed, over 10 / 20 / 40 rounds. Tap the `ℹ` button next to the Rewards label on the settings screen for a breakdown of grade-based rewards. The results screen has a **Round Review** list — filterable to wrong answers only or all rounds — showing each Pokémon, the question asked, your answer, and the correct one.
 
-## Gen 2 Unlock
+## Generation Unlocks
 
-Catching all 151 Gen 1 Pokémon earns the Gen I Completion Badge and unlocks Johto (Gen 2: 100 Pokémon, IDs 152–251). A generation selector appears in Who's That settings, Type Quiz settings, and the Pokédex. Each section is gen-scoped — it shows whichever gen is currently selected.
+Catching every Pokémon in a generation earns that gen's Completion Badge and unlocks the next generation. A generation selector appears in Who's That settings, Type Quiz settings, and the Pokédex once any gen beyond Gen 1 is unlocked. Each section is gen-scoped — it shows whichever gen is currently selected.
+
+| Trigger | Unlocks | Pool |
+|---------|---------|------|
+| Catch all 151 Gen 1 | Gen I Badge → Gen 2 (Johto) | 100 Pokémon, IDs 152–251 |
+| Catch all 100 Gen 2 | Gen II Badge → Gen 3 (Hoenn) | 135 Pokémon, IDs 252–386 |
 
 ## Pokédex
 
-- Gen-scoped: 151 Gen 1 or 100 Gen 2 cards, with per-gen progress counters
-- All entries with pixel sprites, filterable by type and searchable by name
+- Gen-scoped: 151 Gen 1, 100 Gen 2, or 135 Gen 3 cards, with per-gen progress counters
+- All entries with pixel sprites, searchable by name
+- **Type filter dropdown**: compact dropdown with type badges replaces the old button row — select a type to filter the grid, or "All Types" to show everything
+- **Shiny filter toggle**: "✨ Shiny" button next to search — when active, only Pokémon whose shiny form you've caught are shown (with shiny artwork), and progress text shows "✨ Shinies: X / N"
 - Detail modal with official artwork, type badges, a **Weaknesses** tab (4× / 2× / ½× / ¼× / 0×) and a **Stats** tab (base stats from PokeAPI, cached per session); background scroll is locked while the modal is open
 - **Shiny toggle** on the detail card swaps between normal and shiny official artwork
 - **Discovery Mode** silhouettes Pokémon you haven't encountered yet (see below)
@@ -72,13 +84,24 @@ Shiny rate tiers (rates stack):
 | Condition | Rate |
 |---|---|
 | Base | 1/128 |
-| Gen I Completion Badge earned (permanent) | 1/64 |
+| Any Gen Completion Badge earned (permanent, per-gen) | 1/64 |
 | Shiny Charm active (one game) | 1/32 |
-| Gen I Badge + Shiny Charm | 1/16 |
+| Gen Badge + Shiny Charm | 1/16 |
+
+When a gen completion badge is active, a **badge indicator** appears in the WTP game header showing the current shiny rate (e.g. "🏆 Gen 1 Badge — Shiny rate 1/64"). If a Shiny Charm is also equipped, the combined rate is shown (e.g. "✨ Shiny Charm + 🏆 Badge → 1/16").
 
 ## Items
 
-The Item Bag holds up to three of each consumable and is reachable from the hub or from the Who's That settings screen — the back button returns to whichever screen you came from. One item can be equipped before starting a game; it is consumed (count −1) when the game begins and its effect lasts the whole game.
+The Item Bag is reachable from the hub or from the Who's That settings screen — the back button returns to whichever screen you came from. One item can be equipped before starting a game; it is consumed (count −1) when the game begins and its effect lasts the whole game.
+
+Bag capacity starts at 3 per item and increases by 1 for each gen completion badge earned:
+
+| Badges earned | Cap per item |
+|---|---|
+| 0 | 3 (base) |
+| 1 (Gen I complete) | 4 |
+| 2 (Gen I + Gen II) | 5 |
+| 3 (Gen I + II + III) | 6 |
 
 | Item | Effect |
 |------|--------|
@@ -90,6 +113,7 @@ Items drop automatically after each game:
 
 | Source | Drop |
 |--------|------|
+| Who's That — Beginner | None |
 | Who's That — Easy | 1 lure |
 | Who's That — Normal | 1 lure + 30% chance of a second |
 | Who's That — Hard | 2 lures guaranteed |
@@ -151,7 +175,7 @@ What contributes:
 
 Who's That difficulty and round count make no difference to tracking. Type Quiz only marks a Pokémon as seen, because it shows you the name. The `?` button on the Pokédex screen opens this same legend in-app.
 
-The Pokédex screen shows a running `👁 n / N seen · ✓ n named · ✨ n shiny` counter (where N is 151 for Gen 1, 100 for Gen 2), and the detail modal flags the named and shiny states.
+The Pokédex screen shows a running `👁 n / N seen · ✓ n named · ✨ n shiny` counter (where N is 151 for Gen 1, 100 for Gen 2, 135 for Gen 3), and the detail modal flags the named and shiny states.
 
 Progress is **per-device** — cross-device sync would require a backend and is not implemented.
 
@@ -215,8 +239,11 @@ Spec layout:
 | `tests/settings.spec.js` | Audio toggles, announcer voice, discovery mode |
 | `tests/items.spec.js` | Item screen navigation, equip/unequip, consumption on game start, shiny rate |
 | `tests/streak.spec.js` | Play streak tracking, milestone rewards, familiarity bonus |
+| `tests/beginner.spec.js` | Beginner mode: 2 choices, no timer, progressive reveal, 0.5× scoring, category hint |
+| `tests/shiny-bonus.spec.js` | Shiny bonus points: +50 new, +25 repeat, help modal text |
 | `tests/tasks.spec.js` | Task achievements: awards, toast notifications, rendering, hub badge |
 | `tests/gen2.spec.js` | Gen 2 unlock, gen selectors, gen-scoped games/pokedex, badges |
+| `tests/gen3.spec.js` | Gen 3 unlock, gen selectors, gen-scoped games/pokedex, badges |
 
 Helpers live in `tests/helpers.js`. `openApp(page, storage)` seeds `localStorage` before the app boots, which is how tests set up a given Pokédex state without playing through it.
 

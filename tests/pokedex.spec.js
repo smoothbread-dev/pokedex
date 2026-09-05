@@ -10,10 +10,45 @@ test.describe('grid', () => {
     await expect(page.locator('#pokedex-grid .dex-card')).toHaveCount(151);
   });
 
-  test('shows a type filter for every Gen 1 type plus All', async ({ page }) => {
+  test('shows a type dropdown with all Gen 1 types', async ({ page }) => {
     await openApp(page);
     await openPokedex(page);
-    await expect(page.locator('#pokedex-filter .type-filter-btn')).toHaveCount(16);
+    await page.click('#type-dropdown-trigger');
+    await expect(page.locator('#type-dropdown-panel.open')).toBeVisible();
+    await expect(page.locator('#type-dropdown-panel .type-option')).toHaveCount(16);
+  });
+});
+
+test.describe('type dropdown', () => {
+  test.beforeEach(async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN });
+    await openPokedex(page);
+  });
+
+  test('selecting a type filters the grid and closes the panel', async ({ page }) => {
+    await page.click('#type-dropdown-trigger');
+    await page.click('#type-dropdown-panel .type-option[data-type="Fire"]');
+    await expect(page.locator('#type-dropdown-panel')).not.toHaveClass(/open/);
+    await expect(page.locator('#type-dropdown-trigger')).toContainText('Fire');
+    const visible = await page.locator('#pokedex-grid .dex-card:visible').count();
+    expect(visible).toBeGreaterThan(0);
+    expect(visible).toBeLessThan(151);
+  });
+
+  test('selecting All Types restores full grid', async ({ page }) => {
+    await page.click('#type-dropdown-trigger');
+    await page.click('#type-dropdown-panel .type-option[data-type="Fire"]');
+    await page.click('#type-dropdown-trigger');
+    await page.click('#type-dropdown-panel .type-option[data-type="all"]');
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(151);
+    await expect(page.locator('#type-dropdown-trigger')).toContainText('All Types');
+  });
+
+  test('clicking outside closes the dropdown', async ({ page }) => {
+    await page.click('#type-dropdown-trigger');
+    await expect(page.locator('#type-dropdown-panel')).toHaveClass(/open/);
+    await page.click('#dex-progress');
+    await expect(page.locator('#type-dropdown-panel')).not.toHaveClass(/open/);
   });
 });
 
@@ -40,8 +75,8 @@ test.describe('discovery mode on (default)', () => {
   });
 
   test('type filtering excludes unseen entries', async ({ page }) => {
-    await page.click('.type-filter-btn.type-psychic');
-    // Mewtwo, Mew, Abra line etc are Psychic but unseen, so nothing shows.
+    await page.click('#type-dropdown-trigger');
+    await page.click('#type-dropdown-panel .type-option[data-type="Psychic"]');
     await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(0);
   });
 
@@ -142,6 +177,65 @@ test.describe('shiny gating', () => {
     await openPokedex(page);
     await page.click('#pokedex-grid .dex-card[data-id="6"]');
     await expect(page.locator('#modal-shiny-btn')).toBeVisible();
+  });
+});
+
+test.describe('shiny filter', () => {
+  test('toggling on hides non-shiny cards and shows shiny progress', async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN, wtp_shiny_dex: JSON.stringify([25, 6]) });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    await expect(page.locator('#dex-shiny-toggle')).toHaveClass(/active/);
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(2);
+    await expect(page.locator('#dex-progress')).toContainText('Shinies: 2 / 151');
+  });
+
+  test('toggling off restores normal view', async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN, wtp_shiny_dex: JSON.stringify([25]) });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(1);
+    await page.click('#dex-shiny-toggle');
+    await expect(page.locator('#dex-shiny-toggle')).not.toHaveClass(/active/);
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(151);
+  });
+
+  test('no shinies caught shows empty grid', async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(0);
+    await expect(page.locator('#dex-progress')).toContainText('Shinies: 0 / 151');
+  });
+
+  test('shiny filter uses shiny artwork on cards', async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN, wtp_shiny_dex: JSON.stringify([25]) });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    const src = await page.locator('#pokedex-grid .dex-card[data-id="25"] img').getAttribute('src');
+    expect(src).toContain('shiny');
+  });
+
+  test('shiny filter combines with type filter', async ({ page }) => {
+    await openApp(page, { wtp_seen_dex: ALL_SEEN, wtp_shiny_dex: JSON.stringify([25, 6]) });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    await page.click('#type-dropdown-trigger');
+    await page.click('#type-dropdown-panel .type-option[data-type="Fire"]');
+    await expect(page.locator('#pokedex-grid .dex-card:visible')).toHaveCount(1);
+  });
+
+  test('switching gens resets the shiny filter', async ({ page }) => {
+    await openApp(page, {
+      wtp_seen_dex: ALL_SEEN,
+      wtp_shiny_dex: JSON.stringify([25]),
+      wtp_unlocked_gens: JSON.stringify({ gen2: true }),
+    });
+    await openPokedex(page);
+    await page.click('#dex-shiny-toggle');
+    await expect(page.locator('#dex-shiny-toggle')).toHaveClass(/active/);
+    await page.click('#dex-gen-section .gen-btn[data-gen="gen2"]');
+    await expect(page.locator('#dex-shiny-toggle')).not.toHaveClass(/active/);
   });
 });
 

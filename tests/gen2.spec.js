@@ -132,14 +132,15 @@ test.describe('pokedex with gen2', () => {
     expect(text).toContain('/ 100');
   });
 
-  test('gen2 pokedex has Dark and Steel filter buttons', async ({ page }) => {
+  test('gen2 pokedex has Dark and Steel type options in dropdown', async ({ page }) => {
     await openApp(page, {
       ...gen2Unlocked(),
       wtp_active_gen: 'gen2',
     });
     await openPokedex(page);
-    await expect(page.locator('.type-filter-btn:text("Dark")')).toBeVisible();
-    await expect(page.locator('.type-filter-btn:text("Steel")')).toBeVisible();
+    await page.click('#type-dropdown-trigger');
+    await expect(page.locator('#type-dropdown-panel .type-option[data-type="Dark"]')).toBeVisible();
+    await expect(page.locator('#type-dropdown-panel .type-option[data-type="Steel"]')).toBeVisible();
   });
 
   test('gen2 pokemon modal shows correct type, not Normal fallback', async ({ page }) => {

@@ -199,6 +199,52 @@ test.describe('completion badge', () => {
   });
 });
 
+test.describe('bag size scaling', () => {
+  const ALL_GEN1 = Array.from({ length: 151 }, (_, i) => i + 1);
+
+  test('cap is 3 with no badges', async ({ page }) => {
+    await openApp(page);
+    const cap = await page.evaluate(() => getItemCap());
+    expect(cap).toBe(3);
+  });
+
+  test('cap is 4 with gen1 badge', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(ALL_GEN1),
+      wtp_completion_badges: JSON.stringify({ gen1: true }),
+    });
+    const cap = await page.evaluate(() => getItemCap());
+    expect(cap).toBe(4);
+  });
+
+  test('cap is 5 with gen1 and gen2 badges', async ({ page }) => {
+    await openApp(page, {
+      wtp_completion_badges: JSON.stringify({ gen1: true, gen2: true }),
+    });
+    const cap = await page.evaluate(() => getItemCap());
+    expect(cap).toBe(5);
+  });
+
+  test('item count display reflects scaled cap', async ({ page }) => {
+    await openApp(page, {
+      wtp_caught_dex: JSON.stringify(ALL_GEN1),
+      wtp_completion_badges: JSON.stringify({ gen1: true }),
+    });
+    await page.click('#hub-items-btn');
+    await expect(page.locator('.item-count').first()).toHaveText('0 / 4');
+  });
+
+  test('items can be added up to the scaled cap', async ({ page }) => {
+    await openApp(page, {
+      wtp_completion_badges: JSON.stringify({ gen1: true }),
+      wtp_items: JSON.stringify({ unseen_lure: 3, uncaught_lure: 0, shiny_charm: 0 }),
+    });
+    await page.click('#hub-items-btn');
+    const btn = page.locator('.equip-btn').first();
+    await expect(btn).not.toBeDisabled();
+  });
+});
+
 test.describe('item bag freshness via settings link', () => {
   test('navigating to items via "choose in Item Bag" link shows updated counts', async ({ page }) => {
     await openApp(page);

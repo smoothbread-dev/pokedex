@@ -148,8 +148,8 @@ async function startTypeQuiz(page, { rounds = 10 } = {}) {
  */
 async function answerTypeQuiz(page, { correct = true } = {}) {
   await page.evaluate(right => {
-    const offset = tqCurrent.id > 151 ? 151 : 0;
-    const types = tqCurrent.id > 151 ? TYPES_GEN2 : TYPES;
+    const offset = tqCurrent.id > 251 ? 251 : tqCurrent.id > 151 ? 151 : 0;
+    const types = tqCurrent.id > 251 ? TYPES_GEN3 : tqCurrent.id > 151 ? TYPES_GEN2 : TYPES;
     const typeStr = types[tqCurrent.id - offset - 1] || 'Normal';
     const wk = computeWeaknesses(typeStr);
     const weakList = Object.keys(wk).filter(t => wk[t] >= 2);

@@ -4,183 +4,6 @@ Ideas not built yet. Remove or rewrite entries as they ship.
 
 Features are ordered by dependency — each chunk can be built and tested independently before the next begins.
 
-## Chunk 9 — Bag Size Scaling
-
-**Depends on: Chunk 8 (Gen 2 Unlock — shipped).**
-
-Item bag capacity increases as the player earns gen completion badges. Each badge adds +1 to the per-item cap, rewarding long-term progression.
-
-| Badges earned | Cap per item |
-|---|---|
-| 0 | 3 (base) |
-| 1 (Gen 1 complete) | 4 |
-| 2 (Gen 2 complete) | 5 |
-| N | 3 + N |
-
-### Implementation
-
-- Replace `const ITEM_CAP = 3` with a function: `function getItemCap() { return 3 + Object.keys(completionBadges).length; }`
-- Update all references from `ITEM_CAP` to `getItemCap()` (in `dropItems()`, item bag rendering, equip logic)
-- Item Bag screen shows current cap per item (e.g. "2 / 4")
-- No new localStorage keys — reads existing `wtp_completion_badges`
-
-**Files:** `js/game.js` (`getItemCap()`, update all `ITEM_CAP` refs), `index.html` (cap display in item bag), `README.md` (document scaling), `FUTURE-ENHANCEMENTS.md` (remove when shipped).
-
----
-
-## Chunk 10 — Shiny Bonus Points
-
-**Depends on: nothing (current codebase).**
-
-Correctly naming a shiny Pokémon awards bonus points. First-time shiny registrations are worth more than repeats.
-
-### Scoring
-
-| Scenario | Bonus |
-|---|---|
-| Correct answer on a **new** shiny (not yet in `shinyDex`) | +50 |
-| Correct answer on a **repeat** shiny (already in `shinyDex`) | +25 |
-| Wrong answer on a shiny | +0 (shiny is not registered either) |
-
-### Implementation
-
-In `revealAnswer()` correct block (`js/game.js`), after the existing shiny registration logic:
-
-```js
-if (capturedShiny) {
-  const isNew = registerShiny(capturedId);
-  const shinyPts = isNew ? 50 : 25;
-  score += shinyPts;
-  msg += isNew
-    ? ' ✨ Shiny registered! +' + shinyPts
-    : ' ✨ Shiny! +' + shinyPts;
-}
-```
-
-This replaces the current inline `registerShiny(capturedId) ? ' ✨ Shiny registered!' : ' ✨ Shiny (already caught)'` that awards no points.
-
-### Help modal updates
-
-**Difficulty help modal** (`index.html`, `#diff-help-modal`): add a note below the table:
-> ✨ Shiny encounters: +50 pts (new shiny) or +25 pts (repeat shiny) on correct answers.
-
-**Pokédex help modal** (`index.html`, `#help-modal`): update the Shiny description to mention the point bonus:
-> You met its shiny form (a 1 in 128 chance each round) and named it correctly — earning +50 bonus points (or +25 if you've caught that shiny before).
-
-### Files
-
-| File | Change |
-|---|---|
-| `js/game.js` | `revealAnswer()` — add shiny bonus points logic |
-| `index.html` | Update difficulty help modal and Pokédex help modal text |
-| `tests/items.spec.js` or new `tests/shiny-bonus.spec.js` | Test +50 new shiny, +25 repeat shiny, +0 wrong answer |
-| `README.md` | Document shiny bonus scoring |
-| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
-
-### `tests/shiny-bonus.spec.js` coverage
-
-- Correct answer on new shiny awards +50 bonus points
-- Correct answer on repeat shiny (already in `shinyDex`) awards +25 bonus points
-- Wrong answer on shiny awards no bonus and does not register shiny
-- Feedback message includes point amount for new shiny
-- Feedback message includes point amount for repeat shiny
-- Help modals mention shiny bonus
-
-### Verification
-
-1. Start a game, force a shiny round, answer correctly — score includes +50 and feedback says "✨ Shiny registered! +50"
-2. Same shiny appears again, answer correctly — score includes +25 and feedback says "✨ Shiny! +25"
-3. Shiny round, answer wrong — no bonus, shiny not registered
-4. Difficulty help modal mentions shiny bonus
-5. Pokédex help modal mentions shiny bonus
-6. `npm test` — all tests pass
-
----
-
-## Chunk 11 — Beginner Mode
-
-**Depends on: nothing (current codebase).**
-
-A 4th difficulty tier below Easy, designed for players with zero Pokémon knowledge. Removes barriers so new players can learn Pokémon names while playing.
-
-### Difficulty settings
-
-| Setting | Beginner | Easy (current) |
-|---|---|---|
-| Choices | 2 | 4 |
-| Timer | None | 15 s |
-| Auto-hint | Type + first letter | First letter |
-| Manual hint | Shows Pokémon's generation/category | Type + first letter (free) |
-| Scoring | 0.5× multiplier on all points | Normal |
-| Item drops | None | 1 lure |
-| Silhouette | Progressive reveal (unblurs in 3 stages) | Static |
-
-### Progressive silhouette reveal
-
-The silhouette starts fully blacked out (`brightness(0)`) and progressively unblurs in 3 stages over ~10 seconds:
-- 0 s: full silhouette (brightness 0)
-- 4 s: dark shadow with faint color (brightness 0.15)
-- 7 s: dim but recognizable (brightness 0.3)
-
-Since there is no timer, the stages are driven by `setInterval`. The reveal is purely visual — no additional information is surfaced beyond the image itself.
-
-### Storage
-
-No new localStorage keys. Difficulty is already ephemeral (`difficulty` variable, not persisted).
-
-### Implementation
-
-**`js/data.js`**: add `DIFF.beginner`:
-```js
-beginner: { time: 0, hint: 0, choices: 2 }
-```
-
-**`js/game.js`**:
-- `buildChoices()`: when `DIFF[difficulty].choices === 2`, generate only 1 correct + 1 random distractor
-- `nextRound()`: skip timer setup when `timerSecs === 0`; show type hint automatically; start progressive reveal interval
-- `revealAnswer()`: apply `Math.floor(pts * 0.5)` when `difficulty === 'beginner'`
-- `dropItems()`: return empty drops when `difficulty === 'beginner'`
-- `useHint()`: show generation/category hint (e.g. "Starter Pokémon", "Legendary") — needs a small category map in `data.js`
-- Progressive reveal: `setInterval` updates `#pokemon-sil` brightness at 4 s and 7 s; cleared in `revealAnswer()` and `clearPending()`
-
-**`index.html`**:
-- Add Beginner button to `.diff-btn` row in `game-settings-screen`
-- Difficulty help modal: add Beginner column to the table
-- CSS: transition for `#pokemon-sil` filter changes (`transition: filter 1s ease`)
-
-### Files
-
-| File | Change |
-|---|---|
-| `js/data.js` | Add `DIFF.beginner` entry |
-| `js/game.js` | 2-choice building, no-timer logic, progressive reveal, 0.5× scoring, no drops, beginner hint |
-| `index.html` | Beginner button in settings, help modal column, CSS transition |
-| `tests/whos-that.spec.js` or new `tests/beginner.spec.js` | New spec |
-| `README.md` | Document Beginner mode |
-| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
-
-### `tests/beginner.spec.js` coverage
-
-- Beginner difficulty shows 2 choice buttons (not 4)
-- No timer bar is displayed / timer does not count down
-- Type hint is automatically shown at round start
-- Scoring applies 0.5× multiplier
-- No item drops at end of game
-- Progressive reveal changes silhouette brightness over time
-- Beginner button appears in difficulty selector
-
-### Verification
-
-1. Select Beginner difficulty — only 2 choices shown, no timer bar
-2. Type hint displayed automatically (e.g. "Fire type")
-3. Wait 7+ seconds — silhouette progressively brightens
-4. Answer correctly — score shows ~half of normal Easy points
-5. End game — no item drops shown
-6. Difficulty help modal shows Beginner column
-7. `npm test` — all tests pass
-
----
-
 ## Chunk 12 — Points Shop
 
 **Depends on: Chunk 7 (Tasks/Achievements — hub card layout with 6 cards established).**
@@ -284,230 +107,6 @@ localStorage.setItem('wtp_total_points', String(totalPts));
 
 ---
 
-## Chunk 13 — Gen 3 Unlock (Hoenn)
-
-**Depends on: Chunk 8 (Gen 2 Unlock — shipped).**
-
-Adds Gen 3 (Hoenn, 135 Pokémon, IDs 252–386). Earning the Gen 2 completion badge unlocks Gen 3, following the same pattern as Gen 1 → Gen 2. Dynamic Pokédex hub card description already shipped — `updateDexHubDesc()` in `game.js` updates the count based on unlocked gens.
-
-### Architectural refactor: GEN_CONFIG lookup table
-
-The current gen helpers (`genPool()`, `genTypes()`, `genOffset()`, `genAliases()`) use hardcoded gen1/gen2 ternaries. Adding Gen 3 as another ternary layer would be fragile. Refactor to a config lookup:
-
-```js
-const GEN_CONFIG = {
-  gen1: { pool: POKEMON, types: TYPES, offset: 0, aliases: ALIASES, filterTypes: GEN1_TYPES, count: 151, region: 'Kanto' },
-  gen2: { pool: POKEMON_GEN2, types: TYPES_GEN2, offset: 151, aliases: ALIASES_GEN2, filterTypes: GEN2_TYPES, count: 100, region: 'Johto' },
-  gen3: { pool: POKEMON_GEN3, types: TYPES_GEN3, offset: 251, aliases: ALIASES_GEN3, filterTypes: GEN3_TYPES, count: 135, region: 'Hoenn' },
-};
-function genPool()    { return GEN_CONFIG[currentGen].pool; }
-function genTypes()   { return GEN_CONFIG[currentGen].types; }
-function genOffset()  { return GEN_CONFIG[currentGen].offset; }
-function genAliases() { return GEN_CONFIG[currentGen].aliases; }
-```
-
-Update the stale-gen guard to be generic:
-```js
-if (currentGen !== 'gen1' && !unlockedGens[currentGen]) currentGen = 'gen1';
-```
-
-Update `buildPokedex()` filter bar to use `GEN_CONFIG[currentGen].filterTypes`.
-
-### Gen 3 data arrays — `js/data.js`
-
-- **`POKEMON_GEN3`** — 135 names: treecko through deoxys (IDs 252–386)
-- **`TYPES_GEN3`** — 135 parallel type strings with modern typing
-- **`ALIASES_GEN3`** — alternate spellings (e.g. `"deoxys": ["deoxys-normal"]`)
-- **`GEN3_TYPES`** — same as `GEN2_TYPES` (Dark, Steel present; Fairy is Gen 6). Placed in `js/game.js` alongside `GEN1_TYPES` and `GEN2_TYPES`.
-
-### Generic `renderGenSelectors()`
-
-Replace the hardcoded `unlockedGens.gen2` show/hide with a generic check:
-
-```js
-function renderGenSelectors() {
-  const anyUnlocked = Object.keys(unlockedGens).length > 0;
-  ['wtp-gen-section', 'tq-gen-section', 'dex-gen-section'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = anyUnlocked ? '' : 'none';
-  });
-  document.querySelectorAll('.gen-btn').forEach(btn => {
-    const gen = btn.dataset.gen;
-    btn.classList.toggle('selected', gen === currentGen);
-    if (gen !== 'gen1') {
-      btn.disabled = !unlockedGens[gen];
-      btn.textContent = unlockedGens[gen]
-        ? 'Gen ' + gen.slice(3)
-        : 'Gen ' + gen.slice(3) + ' 🔒';
-    }
-  });
-  updateDexHubDesc();
-}
-```
-
-### `checkCompletionBadge()` — Gen 3 unlock + badge
-
-After the existing Gen 2 badge check, add:
-- If `completionBadges.gen2` and gen3 not unlocked → unlock gen3, show toast "🎉 Hoenn unlocked!"
-- If gen3 unlocked and no gen3 badge → check if all 135 Gen 3 Pokémon caught → award badge, show toast "🏆 Gen III badge earned!"
-
-### Gen selector markup — `index.html`
-
-Add a Gen 3 button to each of the 3 gen selector sections (`wtp-gen-section`, `tq-gen-section`, `dex-gen-section`):
-```html
-<button class="gen-btn" data-gen="gen3" disabled>Gen 3 🔒</button>
-```
-
-### Items screen — Gen 3 badge
-
-Add `<div id="badge-gen3" style="display:none"></div>` after `#badge-gen2` in `index.html`.
-
-In `renderItemsScreen()`, add Gen 3 badge block after Gen 2 (same pattern):
-- Hidden when gen3 locked
-- Placeholder: "Catch all 135 Gen III Pokémon to earn the Gen III badge"
-- Earned: "🏆 Gen III — Hoenn Master"
-
-### Files
-
-| File | Change |
-|---|---|
-| `js/data.js` | `POKEMON_GEN3`, `TYPES_GEN3`, `ALIASES_GEN3` arrays (135 entries each) |
-| `js/game.js` | `GEN_CONFIG` lookup table replacing ternary helpers, `GEN3_TYPES`, generic `renderGenSelectors()`, Gen 3 blocks in `checkCompletionBadge()`, Gen 3 badge in `renderItemsScreen()`, extend `updateDexHubDesc()` for gen3 |
-| `index.html` | Gen 3 buttons in 3 gen-section divs, `#badge-gen3` div |
-| `tests/gen3.spec.js` | New spec mirroring gen2.spec.js structure |
-| `README.md` | Update to "Gen I, II & III Edition", document Gen 3 unlock, update Pokédex description |
-| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
-| `sw.js` | Bump `CACHE_NAME` to `pokedex-cache-v3` |
-
-### `tests/gen3.spec.js` coverage
-
-- Gen selector: gen3 button enabled when unlocked, hidden when locked
-- Unlock trigger: catching all 100 gen2 Pokémon unlocks gen3
-- WTP with gen3: uses IDs 252–386, correct answer adds to caught dex
-- Type quiz with gen3: uses IDs 252–386, correct answers accepted
-- Pokedex with gen3: 135 cards, /135 denominator, Dark/Steel filter buttons
-- Gen1 unaffected: still 151 cards when switching back
-- Items screen gen3 badge: hidden/placeholder/earned states
-- Hub card description: "Browse all 151" → "Browse all 251" → "Browse all 386" as gens unlock
-
-### Verification
-
-1. Fresh save — no gen selectors, hub card says "Browse all 151"
-2. Seed all 151 caught → gen1 badge + gen2 unlock, hub card says "Browse all 251"
-3. Seed all 251 caught → gen2 badge + gen3 unlock, hub card says "Browse all 386"
-4. Select Gen 3 in WTP — only Hoenn Pokémon (IDs 252–386)
-5. Select Gen 3 in Type Quiz — correct answers accepted
-6. Pokedex with Gen 3 — 135 cards, Dark/Steel filter buttons
-7. Switch back to Gen 1 — 151 cards, original filter bar
-8. Items screen — Gen 3 badge hidden/placeholder/earned states correct
-9. `npm test` — all existing + new tests pass
-
----
-
-## Chunk 14 — Pokédex Shiny Filter
-
-**Depends on: nothing (current codebase).**
-
-Add a shiny filter to the Pokédex so players can view only Pokémon whose shiny form they've caught for the active generation. Helps shiny hunters track their progress at a glance.
-
-### UI
-
-A toggle button (e.g. "✨ Shiny") next to the search bar or above the filter bar. When active:
-- Only Pokémon present in `shinyDex` for the current gen are shown
-- Cards display the shiny artwork instead of normal artwork
-- The toggle button gets a highlighted/active state
-- Progress text updates to show shiny count (e.g. "Shinies: 12 / 151")
-
-When toggled off, the Pokédex returns to normal view with the current type filter and search preserved.
-
-### Implementation
-
-**`js/game.js`**:
-- Add `let dexShinyFilter = false;` state variable
-- Add `toggleShinyFilter()` function: flips the flag, updates button state, calls `applyDexSearch()`
-- Update `applyDexSearch()`: when `dexShinyFilter` is true, hide cards whose ID is not in `shinyDex`
-- Update `buildPokedex()`: when shiny filter is active, use `SPRITE_OFFICIAL_SHINY(id)` for card images
-- Update `refreshDexMarks()`: update progress text to show shiny count when filter is active
-- Reset `dexShinyFilter = false` when switching gens (in gen button click handler)
-
-**`index.html`**:
-- Add shiny filter toggle button in Pokédex screen (near `#dex-search` or `#pokedex-filter`)
-- CSS for active/inactive shiny filter button state (gold highlight when active)
-
-### Files
-
-| File | Change |
-|---|---|
-| `js/game.js` | `dexShinyFilter` state, `toggleShinyFilter()`, update `applyDexSearch()` and `buildPokedex()` for shiny mode |
-| `index.html` | Shiny filter toggle button markup and CSS |
-| `tests/pokedex.spec.js` | Test shiny filter toggle, card visibility, artwork swap, progress text |
-| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
-
-### Verification
-
-1. Open Pokédex with no shinies caught — toggle shiny filter → empty grid, progress shows "0 / 151"
-2. Register a shiny (e.g. Pikachu) — toggle shiny filter → only Pikachu shown with shiny artwork
-3. Switch gens — shiny filter resets to off
-4. Combine shiny filter with type filter — only matching shinies of that type shown
-5. Toggle off — normal Pokédex view restored
-6. `npm test` — all tests pass
-
----
-
-## Chunk 15 — Pokédex Type Filter Redesign
-
-**Depends on: nothing (current codebase).**
-
-The current type filter bar displays 16–18 individual buttons in a single row, which is too long and cluttered — especially on mobile. Replace with a compact dropdown/select menu.
-
-### Current state
-
-`buildPokedex()` creates one `<button class="type-filter-btn">` per type inside `#pokedex-filter`. Gen 1 has 16 buttons (All + 15 types), Gen 2 has 18 buttons (All + 17 types). They wrap awkwardly on narrow screens.
-
-### UI
-
-Replace the button row with a styled `<select>` dropdown (or a custom dropdown that matches the app's dark theme):
-- Default option: "All Types"
-- One `<option>` per type, styled with the type's color if possible (custom dropdown) or plain text (native `<select>`)
-- Selecting a type calls `applyDexFilter()` as before
-- Compact: takes one line regardless of how many types exist
-
-A custom dropdown is preferred over a native `<select>` to maintain visual consistency with type badge colors. The dropdown trigger button shows the currently selected type badge (or "All Types"), and the dropdown panel shows a grid of type badges (2–3 columns) that closes on selection.
-
-### Implementation
-
-**`js/game.js`**:
-- Replace the filter button creation loop in `buildPokedex()` with a dropdown component
-- `renderTypeDropdown(types)`: creates the dropdown trigger + panel with type badges
-- Click on trigger toggles the panel open/closed
-- Click on a type badge calls `applyDexFilter()` and closes the panel
-- Click outside the panel closes it
-
-**`index.html`**:
-- Remove or repurpose `.type-filter-btn` CSS
-- Add CSS for `.type-dropdown`, `.type-dropdown-trigger`, `.type-dropdown-panel` (absolute-positioned grid of type badges)
-
-### Files
-
-| File | Change |
-|---|---|
-| `js/game.js` | Replace filter button loop in `buildPokedex()` with `renderTypeDropdown()` |
-| `index.html` | CSS for dropdown component; remove unused `.type-filter-btn` styles |
-| `tests/pokedex.spec.js` | Update filter tests for dropdown instead of button row |
-| `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
-
-### Verification
-
-1. Open Pokédex — type dropdown shows "All Types" in a compact trigger button
-2. Click trigger — panel opens with type badges in a grid
-3. Select "Fire" — panel closes, grid filters to Fire types, trigger shows "Fire"
-4. Select "All Types" — full grid restored
-5. Switch gens — dropdown rebuilds with correct types (Dark/Steel added for Gen 2)
-6. Mobile: dropdown fits cleanly on narrow screens
-7. `npm test` — all tests pass
-
----
-
 ## Chunk 16 — Lure Drop Rate Rework
 
 **Depends on: nothing (current codebase).**
@@ -571,64 +170,77 @@ Update the drops display to show "No items dropped" when `lures === 0`, so the p
 
 ---
 
-## Chunk 17 — Gen Badge Effect Display in WTP
+## Chunk 18 — Gen 4 Unlock (Sinnoh)
 
-**Depends on: nothing (current codebase).**
+**Depends on: Chunk 13 (Gen 3 Unlock — shipped).**
 
-When the player has earned the gen completion badge for the current generation, show a visual indicator during WTP gameplay so they know their boosted shiny rate is active. Currently the badge's effect (halved shiny denominator) applies silently — there's no in-game indication.
+Adds Gen 4 (Sinnoh, 107 Pokémon, IDs 387–493). Earning the Gen 3 completion badge unlocks Gen 4, following the `GEN_CONFIG` pattern established by Chunk 13. No structural refactoring needed — just data, a config entry, and markup.
 
-### Current behavior
+### Gen 4 data arrays — `js/data.js`
 
-`getShinyRate()` checks `completionBadges[currentGen]` to determine the shiny rate:
-- No badge, no charm: 1/128
-- Badge only: 1/64
-- Shiny Charm only: 1/32
-- Badge + Shiny Charm: 1/16
+- **`POKEMON_GEN4`** — 107 lowercase hyphenated names: turtwig through arceus (IDs 387–493)
+- **`TYPES_GEN4`** — 107 parallel type strings with modern typing (no Fairy — Gen 6 introduced it)
+- **`ALIASES_GEN4`** — alternate spellings (e.g. `"wormadam": ["wormadam-plant"]`, `"giratina": ["giratina-altered"]`, `"shaymin": ["shaymin-land"]`, `"deoxys-speed"` etc.)
+- Update `CATEGORIES` with Gen 4 starters (387–395), fossils (408–411), legendaries (480–484, 485–488), mythicals (489–493)
+- Update `getCategory()` for IDs 387–493 → "Sinnoh Pokémon"
 
-The badge effect is invisible during gameplay. The equipped Shiny Charm shows in `#game-active-item`, but the badge has no equivalent display.
+### `js/game.js`
 
-### UI
+- **`GEN4_TYPES`** — same as `GEN3_TYPES` (Dark, Steel present; Fairy is Gen 6)
+- **`GEN_CONFIG`** — add `gen4` entry: `{ pool: POKEMON_GEN4, types: TYPES_GEN4, offset: 386, aliases: ALIASES_GEN4, filterTypes: GEN4_TYPES, count: 107, region: 'Sinnoh' }`
+- **`checkCompletionBadge()`** — add Gen 4 unlock (when gen3 badge earned) and Gen 4 badge check (when all 107 caught)
+- **`renderItemsScreen()`** — add Gen 4 badge block after Gen 3 (same pattern)
+- **`updateDexHubDesc()`** — add `if (unlockedGens.gen4) total += 107;` and `gens.push('IV'); regions.push('Sinnoh');`
 
-Add a badge indicator to the WTP game header (near the score or active item display):
-- When `completionBadges[currentGen]` is truthy: show a small badge icon with tooltip text (e.g. "🏆 Gen I Badge — Shiny rate boosted")
-- When combined with Shiny Charm: update the active item description to reflect the combined rate (e.g. "✨ Shiny Charm + 🏆 Badge → 1/16")
-- When no badge: indicator is hidden
+### `index.html`
 
-### Implementation
+- Gen 4 button in all 3 gen selector sections: `<button class="gen-btn" data-gen="gen4" disabled>Gen 4 🔒</button>`
+- `<div id="badge-gen4" style="display:none"></div>` after `#badge-gen3`
 
-**`js/game.js`**:
-- In `startGame()` or `nextRound()`, after setting up `#game-active-item`, check `completionBadges[currentGen]`
-- If badge is active, show `#game-badge-indicator` with the badge icon and current shiny rate
-- If both badge and Shiny Charm are active, combine the display
+### `tests/helpers.js`
 
-**`index.html`**:
-- Add `<div id="game-badge-indicator" style="display:none"></div>` in the game screen header area
-- CSS for the badge indicator (small, unobtrusive, positioned near the active item or score)
+- Update `answerTypeQuiz` to handle IDs > 386 for `TYPES_GEN4`
 
 ### Files
 
 | File | Change |
 |---|---|
-| `js/game.js` | Show/hide `#game-badge-indicator` in `startGame()`/`nextRound()` based on `completionBadges[currentGen]` |
-| `index.html` | `#game-badge-indicator` div in game screen, CSS styling |
-| `tests/whos-that.spec.js` | Test: badge indicator visible when badge earned, hidden when not, combined display with Shiny Charm |
+| `js/data.js` | `POKEMON_GEN4`, `TYPES_GEN4`, `ALIASES_GEN4` arrays (107 entries each), CATEGORIES + getCategory Gen 4 entries |
+| `js/game.js` | `GEN4_TYPES`, `GEN_CONFIG` gen4 entry, Gen 4 blocks in `checkCompletionBadge()`, `renderItemsScreen()`, `updateDexHubDesc()` |
+| `index.html` | Gen 4 buttons in 3 gen-section divs, `#badge-gen4` div |
+| `tests/helpers.js` | `answerTypeQuiz` Gen 4 ID handling |
+| `tests/gen4.spec.js` | New spec mirroring gen3.spec.js structure |
+| `sw.js` | Bump `CACHE_NAME` |
+| `README.md` | Update to "Gen I, II, III & IV Edition", document Gen 4 unlock |
 | `FUTURE-ENHANCEMENTS.md` | Remove this chunk when shipped |
+
+### `tests/gen4.spec.js` coverage
+
+- Gen selector: gen4 button enabled when unlocked, disabled when locked
+- Unlock trigger: catching all 135 gen3 Pokémon unlocks gen4
+- WTP with gen4: uses IDs 387–493, correct answer adds to caught dex
+- Type quiz with gen4: uses IDs 387–493, correct answers accepted
+- Pokedex with gen4: 107 cards, /107 denominator, Dark/Steel filter buttons
+- Gen1 unaffected: still 151 cards when switching back
+- Items screen gen4 badge: hidden/placeholder/earned states
+- Hub card description: "Browse all 493" when gen4 unlocked
 
 ### Verification
 
-1. Play WTP Gen 1 without badge — no badge indicator shown
-2. Earn Gen 1 badge, play WTP Gen 1 — badge indicator visible with "🏆" and shiny rate info
-3. Equip Shiny Charm + badge — combined display shows 1/16 rate
-4. Switch to Gen 2 (no badge) — badge indicator hidden
-5. `npm test` — all tests pass
+1. Fresh save — no gen selectors, hub card says "Browse all 151"
+2. Seed all 386 caught → gen3 badge + gen4 unlock, hub card says "Browse all 493"
+3. Select Gen 4 in WTP — only Sinnoh Pokémon (IDs 387–493)
+4. Pokedex with Gen 4 — 107 cards, Dark/Steel filter
+5. Items screen — Gen 4 badge states correct
+6. `npm test` — all existing + new tests pass
 
 ---
 
-## Long-term — Gen 4–9 Unlock Progression
+## Long-term — Gen 5–9 Unlock Progression
 
-Chunks 8 and 13 establish the gen unlock pattern. Gen 4–9 follow the same structure — each requires its own data arrays in `data.js`, a `GEN_CONFIG` entry, and markup for the gen button and badge. No structural code changes beyond what Chunk 13 introduces with `GEN_CONFIG`.
+Chunks 8, 13, and 18 establish the gen unlock pattern. Gen 5–9 follow the same structure — each requires its own data arrays in `data.js`, a `GEN_CONFIG` entry, and markup for the gen button and badge. No structural code changes beyond what Chunk 13 introduces with `GEN_CONFIG`.
 
-- ID ranges: Gen4 387–493, Gen5 494–649, Gen6 650–721, Gen7 722–809, Gen8 810–905, Gen9 906–1025
+- ID ranges: Gen5 494–649, Gen6 650–721, Gen7 722–809, Gen8 810–905, Gen9 906–1025
 - Fairy type introduced in Gen 6 — `filterTypes` for Gen 6+ needs to include Fairy
 - PokeAPI: pixel art, official artwork, and Showdown GIFs confirmed available for all gens 1–9
 

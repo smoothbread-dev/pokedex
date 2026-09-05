@@ -2,6 +2,7 @@
 let queue = [], current = null, score = 0, streak = 0, bestStreak = 0;
 let correct = 0, answered = 0;
 let timerInterval = null, advanceTimeout = null, timeLeft = 0, timerSecs = 10;
+let revealInterval = null;
 let difficulty = 'normal';
 let roundActive = false, paused = false;
 let roundCount = 25;
@@ -14,7 +15,7 @@ document.getElementById('best-val').textContent = allTimeBest;
 
 // ── Items
 const ITEMS_LS_KEY = 'wtp_items';
-const ITEM_CAP = 3;
+function getItemCap() { return 3 + Object.keys(completionBadges).filter(k => completionBadges[k]).length; }
 let items = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
 try { Object.assign(items, JSON.parse(localStorage.getItem(ITEMS_LS_KEY) || '{}')); } catch (e) {}
 let activeItem = null;
@@ -46,6 +47,7 @@ function getPokemonOfTheDay() {
 function dropItems(mode, grade) {
   const drops = { unseen_lure: 0, uncaught_lure: 0, shiny_charm: 0 };
   if (mode === 'wtp') {
+    if (difficulty === 'beginner') return drops;
     let lures = 0;
     if (difficulty === 'easy') lures = 1;
     else if (difficulty === 'normal') lures = Math.random() < 0.3 ? 2 : 1;
@@ -67,13 +69,13 @@ function dropItems(mode, grade) {
     if (tqTotal < 20) return drops;
     if (grade === 'S') {
       const guaranteed = tqTotal >= 40;
-      if (items.shiny_charm < ITEM_CAP && (guaranteed || Math.random() < 0.5)) drops.shiny_charm = 1;
+      if (items.shiny_charm < getItemCap() && (guaranteed || Math.random() < 0.5)) drops.shiny_charm = 1;
     } else if (grade === 'A') {
       drops.unseen_lure = 1;
     }
   }
   Object.keys(drops).forEach(k => {
-    items[k] = Math.min(ITEM_CAP, items[k] + drops[k]);
+    items[k] = Math.min(getItemCap(), items[k] + drops[k]);
   });
   saveItems();
   return drops;
@@ -97,20 +99,20 @@ function updateStreak() {
   if (!milestone) return null;
 
   if (milestone === 'lure') {
-    items.unseen_lure = Math.min(ITEM_CAP, items.unseen_lure + 1);
-    items.uncaught_lure = Math.min(ITEM_CAP, items.uncaught_lure + 1);
+    items.unseen_lure = Math.min(getItemCap(), items.unseen_lure + 1);
+    items.uncaught_lure = Math.min(getItemCap(), items.uncaught_lure + 1);
     saveItems();
     return '\u{1F525} 3-day streak! +1 Unseen Lure, +1 Uncaught Lure';
   }
   if (milestone === 'charm') {
-    items.shiny_charm = Math.min(ITEM_CAP, items.shiny_charm + 1);
+    items.shiny_charm = Math.min(getItemCap(), items.shiny_charm + 1);
     saveItems();
     return '\u{1F525} 7-day streak! +1 Shiny Charm';
   }
   if (milestone === 'topup') {
-    items.unseen_lure = ITEM_CAP;
-    items.uncaught_lure = ITEM_CAP;
-    items.shiny_charm = ITEM_CAP;
+    items.unseen_lure = getItemCap();
+    items.uncaught_lure = getItemCap();
+    items.shiny_charm = getItemCap();
     saveItems();
     return '\u{1F525} 14-day streak! All items topped up!';
   }
@@ -133,12 +135,24 @@ let unlockedGens = {};
 try { unlockedGens = JSON.parse(localStorage.getItem('wtp_unlocked_gens') || '{}'); } catch (e) {}
 let currentGen = 'gen1';
 try { currentGen = localStorage.getItem('wtp_active_gen') || 'gen1'; } catch (e) {}
-if (currentGen === 'gen2' && !unlockedGens.gen2) currentGen = 'gen1';
+if (currentGen !== 'gen1' && !unlockedGens[currentGen]) currentGen = 'gen1';
 
-function genPool()    { return currentGen === 'gen2' ? POKEMON_GEN2 : POKEMON; }
-function genTypes()   { return currentGen === 'gen2' ? TYPES_GEN2 : TYPES; }
-function genOffset()  { return currentGen === 'gen2' ? 151 : 0; }
-function genAliases() { return currentGen === 'gen2' ? ALIASES_GEN2 : ALIASES; }
+const GEN1_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
+  'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon'];
+const GEN2_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
+  'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon',
+  'Dark','Steel'];
+const GEN3_TYPES = GEN2_TYPES;
+
+const GEN_CONFIG = {
+  gen1: { pool: POKEMON,      types: TYPES,      offset: 0,   aliases: ALIASES,      filterTypes: GEN1_TYPES, count: 151, region: 'Kanto' },
+  gen2: { pool: POKEMON_GEN2, types: TYPES_GEN2, offset: 151, aliases: ALIASES_GEN2, filterTypes: GEN2_TYPES, count: 100, region: 'Johto' },
+  gen3: { pool: POKEMON_GEN3, types: TYPES_GEN3, offset: 251, aliases: ALIASES_GEN3, filterTypes: GEN3_TYPES, count: 135, region: 'Hoenn' },
+};
+function genPool()    { return GEN_CONFIG[currentGen].pool; }
+function genTypes()   { return GEN_CONFIG[currentGen].types; }
+function genOffset()  { return GEN_CONFIG[currentGen].offset; }
+function genAliases() { return GEN_CONFIG[currentGen].aliases; }
 
 // ── Shiny dex
 const SHINY_LS_KEY = 'wtp_shiny_dex';
@@ -297,12 +311,6 @@ function tqClearPending() {
   tqPendingAction = null;
 }
 
-const GEN1_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
-  'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon'];
-const GEN2_TYPES = ['Normal','Fire','Water','Electric','Grass','Ice',
-  'Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon',
-  'Dark','Steel'];
-
 // ── Utilities
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -349,7 +357,9 @@ function useHint() {
   hintUsed = true;
   const cost = DIFF[difficulty].hintCost;
   if (cost > 0) { score -= cost; updateStats(); }
-  if (difficulty === 'hard') {
+  if (difficulty === 'beginner') {
+    document.getElementById('hint-text').textContent = getCategory(current.id);
+  } else if (difficulty === 'hard') {
     const container = document.getElementById('choices');
     const wrong = [...container.querySelectorAll('.choice-btn')]
       .filter(b => b.textContent !== displayName(current.name) && !b.disabled);
@@ -359,7 +369,7 @@ function useHint() {
       target.classList.add('eliminated');
     }
   } else {
-    const type   = TYPES[current.id - 1] || '?';
+    const type   = genTypes()[current.id - 1 - genOffset()] || '?';
     const letter = displayName(current.name)[0].toUpperCase();
     document.getElementById('hint-text').textContent = 'Type: ' + type + '  |  First letter: ' + letter;
   }
@@ -411,6 +421,7 @@ function clearPending() {
   pendingAction = null;
   pendingReady = true;
   pendingDeadline = 0;
+  if (revealInterval) { revealInterval.forEach(clearTimeout); revealInterval = null; }
 }
 
 function getShinyRate() {
@@ -442,6 +453,20 @@ function checkCompletionBadge(silent) {
       completionBadges.gen2 = true;
       try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
       if (!silent) showToast('🏆 Gen II badge earned! Gen 2 shiny rate → 1/64.');
+    }
+  }
+  if (completionBadges.gen2 && !unlockedGens.gen3) {
+    unlockedGens.gen3 = true;
+    try { localStorage.setItem('wtp_unlocked_gens', JSON.stringify(unlockedGens)); } catch (e) {}
+    if (!silent) showToast('🎉 Hoenn unlocked! Gen 3 is now available.');
+    renderGenSelectors();
+  }
+  if (unlockedGens.gen3 && !completionBadges.gen3) {
+    const allGen3 = POKEMON_GEN3.every((_, i) => caughtDex.has(252 + i));
+    if (allGen3) {
+      completionBadges.gen3 = true;
+      try { localStorage.setItem(BADGES_LS_KEY, JSON.stringify(completionBadges)); } catch (e) {}
+      if (!silent) showToast('🏆 Gen III badge earned! Gen 3 shiny rate → 1/64.');
     }
   }
   renderItemsScreen();
@@ -500,7 +525,7 @@ function renderItemsScreen() {
         <div class="item-desc">${meta.desc}</div>
         <div class="item-source">${meta.source}</div>
       </div>
-      <div class="item-count">${count} / ${ITEM_CAP}</div>
+      <div class="item-count">${count} / ${getItemCap()}</div>
     `;
     row.appendChild(equip);
     list.appendChild(row);
@@ -534,6 +559,24 @@ function renderItemsScreen() {
       badge2.textContent = '';
     }
   }
+
+  const badge3 = document.getElementById('badge-gen3');
+  if (badge3) {
+    if (unlockedGens.gen3) {
+      badge3.style.display = '';
+      if (completionBadges.gen3) {
+        badge3.className = 'badge-earned';
+        badge3.innerHTML = '🏆 Gen III — Hoenn Master<br><small>Gen 3 shiny rate: 1/64 (1/16 with Shiny Charm)</small>';
+      } else {
+        badge3.className = 'badge-placeholder';
+        badge3.textContent = 'Catch all 135 Gen III Pokémon to earn the Gen III badge';
+      }
+    } else {
+      badge3.style.display = 'none';
+      badge3.className = '';
+      badge3.textContent = '';
+    }
+  }
 }
 
 function showToast(msg) {
@@ -546,17 +589,19 @@ function showToast(msg) {
 
 function renderGenSelectors() {
   const sections = ['wtp-gen-section', 'tq-gen-section', 'dex-gen-section'];
-  const show = !!unlockedGens.gen2;
+  const anyUnlocked = Object.keys(unlockedGens).length > 0;
   sections.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = show ? '' : 'none';
+    if (el) el.style.display = anyUnlocked ? '' : 'none';
   });
   document.querySelectorAll('.gen-btn').forEach(btn => {
     const gen = btn.dataset.gen;
     btn.classList.toggle('selected', gen === currentGen);
-    if (gen === 'gen2') {
-      btn.disabled = !unlockedGens.gen2;
-      btn.textContent = unlockedGens.gen2 ? 'Gen 2' : 'Gen 2 🔒';
+    if (gen !== 'gen1') {
+      btn.disabled = !unlockedGens[gen];
+      btn.textContent = unlockedGens[gen]
+        ? 'Gen ' + gen.slice(3)
+        : 'Gen ' + gen.slice(3) + ' 🔒';
     }
   });
   updateDexHubDesc();
@@ -572,6 +617,7 @@ function updateDexHubDesc() {
   if (el) {
     var total = 151;
     if (unlockedGens.gen2) total += 100;
+    if (unlockedGens.gen3) total += 135;
     el.textContent = 'Browse all ' + total + ' — search, filter and view details';
   }
   var sub = document.getElementById('hub-subtitle');
@@ -579,12 +625,13 @@ function updateDexHubDesc() {
     var gens = ['I'];
     var regions = ['Kanto'];
     if (unlockedGens.gen2) { gens.push('II'); regions.push('Johto'); }
+    if (unlockedGens.gen3) { gens.push('III'); regions.push('Hoenn'); }
     sub.textContent = 'Gen ' + joinAnd(gens) + ' — ' + joinAnd(regions) + ' Edition';
   }
 }
 
 function setGen(gen) {
-  if (gen === 'gen2' && !unlockedGens.gen2) return;
+  if (gen !== 'gen1' && !unlockedGens[gen]) return;
   currentGen = gen;
   try { localStorage.setItem('wtp_active_gen', gen); } catch (e) {}
   renderGenSelectors();
@@ -594,6 +641,9 @@ document.querySelectorAll('.gen-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     setGen(btn.dataset.gen);
     if (btn.closest('#dex-gen-section')) {
+      dexShinyFilter = false;
+      var shinyBtn = document.getElementById('dex-shiny-toggle');
+      if (shinyBtn) shinyBtn.classList.remove('active');
       buildPokedex();
       refreshDexMarks();
     }
@@ -624,6 +674,24 @@ function startGame() {
   } else {
     itemPill.textContent = '';
   }
+
+  var badgeInd = document.getElementById('game-badge-indicator');
+  if (badgeInd) {
+    var hasBadge = !!completionBadges[currentGen];
+    if (hasBadge) {
+      var rate = getShinyRate();
+      var rateStr = '1/' + Math.round(1 / rate);
+      if (activeItem === 'shiny_charm') {
+        badgeInd.textContent = '✨ Shiny Charm + 🏆 Badge → ' + rateStr;
+      } else {
+        badgeInd.textContent = '🏆 ' + currentGen.replace('gen', 'Gen ') + ' Badge — Shiny rate ' + rateStr;
+      }
+      badgeInd.style.display = '';
+    } else {
+      badgeInd.style.display = 'none';
+    }
+  }
+
   nextRound();
 }
 
@@ -668,7 +736,11 @@ function nextRound() {
   hintBtn.disabled = false;
   hintBtn.textContent = hintBtnLabel();
   const hintText = document.getElementById('hint-text');
-  if (difficulty === 'easy') {
+  if (difficulty === 'beginner') {
+    const type = genTypes()[current.id - 1 - genOffset()] || '?';
+    const letter = displayName(current.name)[0].toUpperCase();
+    hintText.textContent = 'Type: ' + type + '  |  First letter: ' + letter;
+  } else if (difficulty === 'easy') {
     hintText.textContent = 'First letter: ' + displayName(current.name)[0].toUpperCase();
   } else {
     hintText.textContent = '';
@@ -682,7 +754,17 @@ function nextRound() {
   }
   document.getElementById('choices').style.display = 'grid';
 
-  startTimer();
+  if (difficulty === 'beginner') {
+    document.getElementById('timer-bar').style.width = '0%';
+    const sil = document.getElementById('pokemon-sil');
+    sil.style.filter = 'brightness(0)';
+    revealInterval = [
+      setTimeout(() => { sil.style.filter = 'brightness(0.15)'; }, 4000),
+      setTimeout(() => { sil.style.filter = 'brightness(0.3)'; }, 7000),
+    ];
+  } else {
+    startTimer();
+  }
   setTimeout(() => announceQuestion(), 150);
 }
 
@@ -752,9 +834,10 @@ function submitAnswer() {
 }
 
 function buildChoices() {
-  const pool = POKEMON.filter(n => n !== current.name);
+  const pool = genPool().filter(n => n !== current.name);
   shuffle(pool);
-  const options = shuffle([current.name, ...pool.slice(0, 3)]);
+  const numChoices = (DIFF[difficulty] && DIFF[difficulty].choices) || 4;
+  const options = shuffle([current.name, ...pool.slice(0, numChoices - 1)]);
   const container = document.getElementById('choices');
   container.innerHTML = '';
   options.forEach(name => {
@@ -813,8 +896,11 @@ function buildHardChoices() {
 function revealAnswer(wasCorrect, guessText) {
   roundActive = false;
   clearInterval(timerInterval);
+  if (revealInterval) { revealInterval.forEach(clearTimeout); revealInterval = null; }
 
-  document.getElementById('pokemon-sil').style.opacity = '0';
+  const silEl = document.getElementById('pokemon-sil');
+  silEl.style.filter = '';
+  silEl.style.opacity = '0';
   document.getElementById('pokemon-art').style.opacity = '1';
   document.getElementById('answer-input').disabled = true;
   document.getElementById('submit-btn').disabled = true;
@@ -830,7 +916,7 @@ function revealAnswer(wasCorrect, guessText) {
     const mult  = getMultiplier();
     const bonus = timeLeft >= (timerSecs - 3);
     const base  = 10 + (bonus ? 5 : 0);
-    const pts   = base * mult;
+    const pts   = Math.floor(base * mult * (difficulty === 'beginner' ? 0.5 : 1));
     const familiar = caughtDex.has(capturedId);
     score += pts + (familiar ? 5 : 0);
     streak++;
@@ -843,7 +929,14 @@ function revealAnswer(wasCorrect, guessText) {
     else if (bonus)        msg += ' (speed bonus!)';
     else if (mult > 1)     msg += ' (x' + mult + ' streak!)';
     if (familiar) msg += ' +5 familiarity!';
-    if (capturedShiny) msg += registerShiny(capturedId) ? ' ✨ Shiny registered!' : ' ✨ Shiny (already caught)';
+    if (capturedShiny) {
+      const isNew = registerShiny(capturedId);
+      const shinyPts = isNew ? 50 : 25;
+      score += shinyPts;
+      msg += isNew
+        ? ' ✨ Shiny registered! +' + shinyPts
+        : ' ✨ Shiny! +' + shinyPts;
+    }
     fb.textContent = msg;
     fb.className = 'correct';
   } else {
@@ -1185,21 +1278,7 @@ function buildPokedex() {
   const searchInput = document.getElementById('pokedex-search');
   if (searchInput) searchInput.value = '';
 
-  const filterBar = document.getElementById('pokedex-filter');
-  filterBar.innerHTML = '';
-  const allBtn = document.createElement('button');
-  allBtn.className = 'type-filter-btn selected';
-  allBtn.textContent = 'All';
-  allBtn.addEventListener('click', () => applyDexFilter('all', allBtn));
-  filterBar.appendChild(allBtn);
-  const filterTypes = currentGen === 'gen2' ? GEN2_TYPES : GEN1_TYPES;
-  filterTypes.forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = 'type-filter-btn type-badge type-' + t.toLowerCase();
-    btn.textContent = t;
-    btn.addEventListener('click', () => applyDexFilter(t, btn));
-    filterBar.appendChild(btn);
-  });
+  renderTypeDropdown();
 
   const pool = genPool(), offset = genOffset(), types = genTypes();
   pool.forEach((name, i) => {
@@ -1214,7 +1293,7 @@ function buildPokedex() {
     card.title = displayName(name);
 
     const img = document.createElement('img');
-    img.src = SPRITE_URL(id);
+    img.src = dexShinyFilter ? SPRITE_OFFICIAL_SHINY(id) : SPRITE_URL(id);
     img.alt = name;
     img.loading = 'lazy';
 
@@ -1256,6 +1335,96 @@ function buildPokedex() {
   });
 }
 
+function renderTypeDropdown() {
+  var filterBar = document.getElementById('pokedex-filter');
+  filterBar.innerHTML = '';
+  var dropdown = document.createElement('div');
+  dropdown.className = 'type-dropdown';
+
+  var trigger = document.createElement('button');
+  trigger.className = 'type-dropdown-trigger';
+  trigger.id = 'type-dropdown-trigger';
+  trigger.textContent = 'All Types';
+
+  var panel = document.createElement('div');
+  panel.className = 'type-dropdown-panel';
+  panel.id = 'type-dropdown-panel';
+
+  var allOpt = document.createElement('span');
+  allOpt.className = 'type-option selected';
+  allOpt.textContent = 'All Types';
+  allOpt.style.background = '#0f3460';
+  allOpt.style.color = '#eee';
+  allOpt.dataset.type = 'all';
+  allOpt.addEventListener('click', function() { selectTypeOption('all', trigger, panel); });
+  panel.appendChild(allOpt);
+
+  var filterTypes = GEN_CONFIG[currentGen].filterTypes;
+  filterTypes.forEach(function(t) {
+    var opt = document.createElement('span');
+    opt.className = 'type-option type-badge type-' + t.toLowerCase();
+    opt.textContent = t;
+    opt.dataset.type = t;
+    opt.addEventListener('click', function() { selectTypeOption(t, trigger, panel); });
+    panel.appendChild(opt);
+  });
+
+  trigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var isOpen = panel.classList.contains('open');
+    panel.classList.toggle('open');
+    trigger.classList.toggle('open');
+    if (!isOpen) {
+      setTimeout(function() {
+        document.addEventListener('click', closeTypeDropdown);
+      }, 0);
+    }
+  });
+
+  dropdown.appendChild(trigger);
+  dropdown.appendChild(panel);
+  filterBar.appendChild(dropdown);
+}
+
+function closeTypeDropdown() {
+  var panel = document.getElementById('type-dropdown-panel');
+  var trigger = document.getElementById('type-dropdown-trigger');
+  if (panel) panel.classList.remove('open');
+  if (trigger) trigger.classList.remove('open');
+  document.removeEventListener('click', closeTypeDropdown);
+}
+
+function selectTypeOption(type, trigger, panel) {
+  dexFilterType = type;
+  panel.querySelectorAll('.type-option').forEach(function(o) { o.classList.remove('selected'); });
+  var selected = panel.querySelector('[data-type="' + type + '"]');
+  if (selected) selected.classList.add('selected');
+  if (type === 'all') {
+    trigger.textContent = 'All Types';
+    trigger.className = 'type-dropdown-trigger';
+  } else {
+    trigger.textContent = type;
+    trigger.className = 'type-dropdown-trigger type-badge type-' + type.toLowerCase();
+  }
+  panel.classList.remove('open');
+  trigger.classList.remove('open');
+  document.removeEventListener('click', closeTypeDropdown);
+  applyDexSearch();
+}
+
+function toggleShinyFilter() {
+  dexShinyFilter = !dexShinyFilter;
+  var btn = document.getElementById('dex-shiny-toggle');
+  if (btn) btn.classList.toggle('active', dexShinyFilter);
+  document.querySelectorAll('#pokedex-grid .dex-card').forEach(function(card) {
+    var id = parseInt(card.dataset.id, 10);
+    var img = card.querySelector('img');
+    if (img) img.src = dexShinyFilter ? SPRITE_OFFICIAL_SHINY(id) : SPRITE_URL(id);
+  });
+  refreshDexMarks();
+  applyDexSearch();
+}
+
 function refreshDexMarks() {
   document.querySelectorAll('#pokedex-grid .dex-card').forEach(card => {
     const cardId = parseInt(card.dataset.id, 10);
@@ -1272,28 +1441,32 @@ function refreshDexMarks() {
   const genSeen = [...seenDex].filter(id => genIds.has(id)).length;
   const genCaught = [...caughtDex].filter(id => genIds.has(id)).length;
   const genShiny = [...shinyDex].filter(id => genIds.has(id)).length;
-  document.getElementById('dex-progress').textContent =
-    '👁 ' + genSeen + ' / ' + pool.length + ' seen  ·  ✓ ' +
-    genCaught + ' named  ·  ✨ ' + genShiny + ' shiny';
+  if (dexShinyFilter) {
+    document.getElementById('dex-progress').textContent =
+      '✨ Shinies: ' + genShiny + ' / ' + pool.length;
+  } else {
+    document.getElementById('dex-progress').textContent =
+      '👁 ' + genSeen + ' / ' + pool.length + ' seen  ·  ✓ ' +
+      genCaught + ' named  ·  ✨ ' + genShiny + ' shiny';
+  }
 }
 
 let dexFilterType = 'all';
+let dexShinyFilter = false;
 
-function applyDexFilter(filter, clickedBtn) {
+function applyDexFilter(filter) {
   dexFilterType = filter;
-  document.querySelectorAll('.type-filter-btn').forEach(b => b.classList.remove('selected'));
-  clickedBtn.classList.add('selected');
   applyDexSearch();
 }
 
 function applyDexSearch() {
   const query = (document.getElementById('dex-search').value || '').toLowerCase().trim();
   document.querySelectorAll('#pokedex-grid .dex-card').forEach(card => {
-    // Unseen entries must not be findable by name or type, or discovery mode leaks answers.
     const unseen = card.classList.contains('unseen');
     const typeMatch = dexFilterType === 'all' || (!unseen && card.dataset.types.includes(dexFilterType));
     const nameMatch = !query || (!unseen && card.dataset.nameLower.includes(query));
-    card.style.display = (typeMatch && nameMatch) ? '' : 'none';
+    var shinyMatch = !dexShinyFilter || shinyDex.has(parseInt(card.dataset.id, 10));
+    card.style.display = (typeMatch && nameMatch && shinyMatch) ? '' : 'none';
   });
 }
 
@@ -1526,7 +1699,8 @@ function renderTqReview() {
 
 // ── Event listeners
 document.getElementById('hub-game-btn').addEventListener('click', () => { renderGenSelectors(); renderActiveItemRow(); showScreen('game-settings-screen'); });
-document.getElementById('hub-dex-btn').addEventListener('click', () => { renderGenSelectors(); buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
+document.getElementById('hub-dex-btn').addEventListener('click', () => { dexShinyFilter = false; var sb = document.getElementById('dex-shiny-toggle'); if (sb) sb.classList.remove('active'); renderGenSelectors(); buildPokedex(); refreshDexMarks(); showScreen('pokedex-screen'); });
+document.getElementById('dex-shiny-toggle').addEventListener('click', () => toggleShinyFilter());
 document.getElementById('hub-typequiz-btn').addEventListener('click', () => { renderGenSelectors(); showScreen('tq-settings-screen'); });
 document.getElementById('hub-items-btn').addEventListener('click', () => { itemsScreenOrigin = 'hub-screen'; renderItemsScreen(); showScreen('items-screen'); });
 document.getElementById('items-back-btn').addEventListener('click', () => { showScreen(itemsScreenOrigin); itemsScreenOrigin = 'hub-screen'; });

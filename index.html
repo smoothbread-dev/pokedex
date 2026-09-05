@@ -258,7 +258,7 @@ body {
 }
 #pokemon-sil {
   filter: brightness(0);
-  transition: opacity 0.4s ease;
+  transition: opacity 0.4s ease, filter 1s ease;
 }
 #pokemon-art {
   opacity: 0;
@@ -562,6 +562,89 @@ body {
 }
 .type-filter-btn.selected { border-color: #fff; }
 .type-filter-btn:first-child { background: #0f3460; color: #eee; }
+
+/* ── Dex search row */
+.dex-search-row { display: flex; gap: 0.4rem; align-items: center; width: 100%; }
+.dex-search-row #dex-search { flex: 1; }
+.dex-shiny-btn {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  border: 2px solid #555;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+  color: #ccc;
+  background: #16213e;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.dex-shiny-btn.active {
+  border-color: #f5c842;
+  background: #3a2e10;
+  color: #f5c842;
+}
+
+/* ── Type dropdown */
+.type-dropdown { position: relative; width: 100%; margin-bottom: 0.5rem; }
+.type-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: 2px solid #0f3460;
+  background: #16213e;
+  color: #eee;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+}
+.type-dropdown-trigger::after {
+  content: '▾';
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #888;
+}
+.type-dropdown-trigger.open::after { content: '▴'; }
+.type-dropdown-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #16213e;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.type-dropdown-panel.open { display: flex; }
+.type-dropdown-panel .type-option {
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.1s;
+}
+.type-dropdown-panel .type-option:hover { border-color: #fff; }
+.type-dropdown-panel .type-option.selected { border-color: #fff; }
+
+/* ── Badge indicator */
+.game-badge-indicator {
+  text-align: center;
+  font-size: 0.72rem;
+  color: #f5c842;
+  padding: 0.2rem 0.5rem;
+}
 
 /* ── Type quiz */
 .tq-pokemon-box {
@@ -1029,6 +1112,7 @@ body {
     <div class="settings-label">Completion Badge</div>
     <div id="badge-gen1" class="badge-placeholder">Catch all 151 Pokémon to earn the Gen I badge</div>
     <div id="badge-gen2" style="display:none"></div>
+    <div id="badge-gen3" style="display:none"></div>
   </div>
 </div>
 
@@ -1106,6 +1190,7 @@ body {
   <div class="settings-section">
     <div class="settings-label">Difficulty</div>
     <div class="btn-row">
+      <button class="diff-btn" data-diff="beginner">Beginner</button>
       <button class="diff-btn selected" data-diff="easy">Easy</button>
       <button class="diff-btn" data-diff="normal">Normal</button>
       <button class="diff-btn" data-diff="hard">Hard</button>
@@ -1124,6 +1209,7 @@ body {
     <div class="btn-row">
       <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
       <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
+      <button class="gen-btn" data-gen="gen3" disabled>Gen 3 🔒</button>
     </div>
   </div>
   <div class="settings-section">
@@ -1155,6 +1241,7 @@ body {
     </div>
   </div>
   <div id="game-active-item" class="game-active-item"></div>
+  <div id="game-badge-indicator" class="game-badge-indicator" style="display:none"></div>
   <div class="pokemon-frame">
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="pokemon-stage">
@@ -1229,9 +1316,13 @@ body {
     <div class="btn-row">
       <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
       <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
+      <button class="gen-btn" data-gen="gen3" disabled>Gen 3 🔒</button>
     </div>
   </div>
-  <input id="dex-search" type="search" placeholder="Search Pokémon…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <div class="dex-search-row">
+    <input id="dex-search" type="search" placeholder="Search Pokémon…" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="dex-shiny-toggle" class="dex-shiny-btn" aria-label="Show only shinies">✨ Shiny</button>
+  </div>
   <div id="pokedex-filter"></div>
   <div class="scroll-area">
     <div class="dex-grid" id="pokedex-grid"></div>
@@ -1258,6 +1349,7 @@ body {
     <div class="btn-row">
       <button class="gen-btn selected" data-gen="gen1">Gen 1</button>
       <button class="gen-btn" data-gen="gen2" disabled>Gen 2 🔒</button>
+      <button class="gen-btn" data-gen="gen3" disabled>Gen 3 🔒</button>
     </div>
   </div>
   <div class="settings-section">
@@ -1344,7 +1436,7 @@ body {
       <div class="help-icon">&#x2728;</div>
       <div>
         <div class="help-name">Shiny</div>
-        <div class="help-desc">You met its shiny form (a 1 in 128 chance each round) and named it correctly. The card gets a gold border. While Discovery Mode is on, the shiny toggle on an entry stays hidden until you have actually found that shiny.</div>
+        <div class="help-desc">You met its shiny form (a 1 in 128 chance each round) and named it correctly &mdash; earning +50 bonus points (or +25 if you've caught that shiny before). The card gets a gold border. While Discovery Mode is on, the shiny toggle on an entry stays hidden until you have actually found that shiny.</div>
       </div>
     </div>
 
@@ -1372,15 +1464,18 @@ body {
 
     <div class="help-sub">Per difficulty</div>
     <table class="help-table">
-      <tr><th></th><th>Easy</th><th>Normal</th><th>Hard</th></tr>
-      <tr><td>Choices</td><td>4 random</td><td>4 random</td><td>4 same-type</td></tr>
-      <tr><td>Timer</td><td>15 s</td><td>10 s</td><td>6 s</td></tr>
-      <tr><td>Auto-hint</td><td>1st letter free</td><td>—</td><td>—</td></tr>
-      <tr><td>Hint cost</td><td>Free</td><td>−5 pts</td><td>−10 pts (removes 1)</td></tr>
-      <tr><td>Lure drops</td><td>1</td><td>1–2</td><td>2</td></tr>
+      <tr><th></th><th>Beginner</th><th>Easy</th><th>Normal</th><th>Hard</th></tr>
+      <tr><td>Choices</td><td>2 random</td><td>4 random</td><td>4 random</td><td>4 same-type</td></tr>
+      <tr><td>Timer</td><td>None</td><td>15 s</td><td>10 s</td><td>6 s</td></tr>
+      <tr><td>Auto-hint</td><td>Type + 1st letter</td><td>1st letter free</td><td>—</td><td>—</td></tr>
+      <tr><td>Hint cost</td><td>Free (category)</td><td>Free</td><td>−5 pts</td><td>−10 pts (removes 1)</td></tr>
+      <tr><td>Scoring</td><td>0.5×</td><td>Normal</td><td>Normal</td><td>Normal</td></tr>
+      <tr><td>Lure drops</td><td>None</td><td>1</td><td>1–2</td><td>2</td></tr>
+      <tr><td>Silhouette</td><td>Progressive reveal</td><td>Static</td><td>Static</td><td>Static</td></tr>
     </table>
 
     <div class="help-desc" style="margin-top:0.6rem;">Lures split evenly between Unseen and Uncaught. PotD doubles lure drops once per day.</div>
+    <div class="help-desc" style="margin-top:0.5rem;">&#x2728; Shiny encounters: +50 pts (new shiny) or +25 pts (repeat shiny) on correct answers.</div>
   </div>
 </div>
 

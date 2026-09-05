@@ -228,6 +228,40 @@ test.describe('pause', () => {
   });
 });
 
+test.describe('badge indicator', () => {
+  test('shows badge shiny rate when gen has a completion badge', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('wtp_completion_badges', JSON.stringify({ gen1: true }));
+      completionBadges = { gen1: true };
+    });
+    await startWhosThat(page, { rounds: 10 });
+    const badge = page.locator('#game-badge-indicator');
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText('Gen 1 Badge');
+    await expect(badge).toContainText('1/');
+  });
+
+  test('hidden when gen has no completion badge', async ({ page }) => {
+    await startWhosThat(page, { rounds: 10 });
+    await expect(page.locator('#game-badge-indicator')).toBeHidden();
+  });
+
+  test('shows combined text with shiny charm', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('wtp_completion_badges', JSON.stringify({ gen1: true }));
+      completionBadges = { gen1: true };
+      localStorage.setItem('wtp_items', JSON.stringify({ shiny_charm: 1, unseen_lure: 0, uncaught_lure: 0 }));
+      items = { shiny_charm: 1, unseen_lure: 0, uncaught_lure: 0 };
+      activeItem = 'shiny_charm';
+    });
+    await startWhosThat(page, { rounds: 10 });
+    const badge = page.locator('#game-badge-indicator');
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText('Shiny Charm');
+    await expect(badge).toContainText('Badge');
+  });
+});
+
 test.describe('end screen', () => {
   test('play again starts a fresh run', async ({ page }) => {
     await startWhosThat(page, { rounds: 10 });

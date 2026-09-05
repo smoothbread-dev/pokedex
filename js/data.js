@@ -167,11 +167,98 @@ const ALIASES_GEN2 = {
   "porygon2": ["porygon 2"],
 };
 
-const DIFF = {
-  easy:   { timer: 15, hintCost: 0  },
-  normal: { timer: 10, hintCost: 5  },
-  hard:   { timer: 6,  hintCost: 10 },
+const POKEMON_GEN3 = [
+  "treecko","grovyle","sceptile","torchic","combusken","blaziken",
+  "mudkip","marshtomp","swampert","poochyena","mightyena","zigzagoon",
+  "linoone","wurmple","silcoon","beautifly","cascoon","dustox",
+  "lotad","lombre","ludicolo","seedot","nuzleaf","shiftry",
+  "taillow","swellow","wingull","pelipper","ralts","kirlia",
+  "gardevoir","surskit","masquerain","shroomish","breloom","slakoth",
+  "vigoroth","slaking","nincada","ninjask","shedinja","whismur",
+  "loudred","exploud","makuhita","hariyama","azurill","nosepass",
+  "skitty","delcatty","sableye","mawile","aron","lairon",
+  "aggron","meditite","medicham","electrike","manectric","plusle",
+  "minun","volbeat","illumise","roselia","gulpin","swalot",
+  "carvanha","sharpedo","wailmer","wailord","numel","camerupt",
+  "torkoal","spoink","grumpig","spinda","trapinch","vibrava",
+  "flygon","cacnea","cacturne","swablu","altaria","zangoose",
+  "seviper","lunatone","solrock","barboach","whiscash","corphish",
+  "crawdaunt","baltoy","claydol","lileep","cradily","anorith",
+  "armaldo","feebas","milotic","castform","kecleon","shuppet",
+  "banette","duskull","dusclops","tropius","chimecho","absol",
+  "wynaut","snorunt","glalie","spheal","sealeo","walrein",
+  "clamperl","huntail","gorebyss","relicanth","luvdisc","bagon",
+  "shelgon","salamence","beldum","metang","metagross","regirock",
+  "regice","registeel","latias","latios","kyogre","groudon",
+  "rayquaza","jirachi","deoxys"
+];
+
+
+const TYPES_GEN3 = [
+  "Grass","Grass","Grass","Fire","Fire/Fighting","Fire/Fighting",
+  "Water","Water/Ground","Water/Ground","Dark","Dark","Normal",
+  "Normal","Bug","Bug","Bug/Flying","Bug","Bug/Poison",
+  "Water/Grass","Water/Grass","Water/Grass","Grass","Grass/Dark","Grass/Dark",
+  "Normal/Flying","Normal/Flying","Water/Flying","Water/Flying","Psychic/Fairy","Psychic/Fairy",
+  "Psychic/Fairy","Bug/Water","Bug/Flying","Grass","Grass/Fighting","Normal",
+  "Normal","Normal","Bug","Bug/Flying","Bug/Ghost","Normal",
+  "Normal","Normal","Fighting","Fighting","Normal/Fairy","Rock",
+  "Normal","Normal","Dark/Ghost","Steel/Fairy","Steel/Rock","Steel/Rock",
+  "Steel/Rock","Fighting/Psychic","Fighting/Psychic","Electric","Electric","Electric",
+  "Electric","Bug","Bug","Grass/Poison","Poison","Poison",
+  "Water/Dark","Water/Dark","Water","Water","Fire/Ground","Fire/Ground",
+  "Fire","Psychic","Psychic","Normal","Ground","Ground/Dragon",
+  "Ground/Dragon","Grass","Grass/Dark","Normal/Flying","Dragon/Flying","Normal",
+  "Poison","Rock/Psychic","Rock/Psychic","Water/Ground","Water/Ground","Water",
+  "Water/Dark","Ground/Psychic","Ground/Psychic","Rock/Grass","Rock/Grass","Rock/Bug",
+  "Rock/Bug","Water","Water","Normal","Normal","Ghost",
+  "Ghost","Ghost","Ghost","Grass/Flying","Psychic","Dark",
+  "Psychic","Ice","Ice","Ice/Water","Ice/Water","Ice/Water",
+  "Water","Water","Water","Water/Rock","Water","Dragon",
+  "Dragon","Dragon/Flying","Steel/Psychic","Steel/Psychic","Steel/Psychic","Rock",
+  "Ice","Steel","Dragon/Psychic","Dragon/Psychic","Water","Ground",
+  "Dragon/Flying","Steel/Psychic","Psychic"
+];
+
+const ALIASES_GEN3 = {
+  "deoxys": ["deoxys-normal"],
 };
+
+const DIFF = {
+  beginner: { timer: 0, hintCost: 0, choices: 2 },
+  easy:     { timer: 15, hintCost: 0  },
+  normal:   { timer: 10, hintCost: 5  },
+  hard:     { timer: 6,  hintCost: 10 },
+};
+
+const CATEGORIES = {
+  1:'Starter',2:'Starter',3:'Starter',4:'Starter',5:'Starter',6:'Starter',
+  7:'Starter',8:'Starter',9:'Starter',
+  133:'Eeveelution',134:'Eeveelution',135:'Eeveelution',136:'Eeveelution',
+  138:'Fossil',139:'Fossil',140:'Fossil',141:'Fossil',142:'Fossil',
+  144:'Legendary',145:'Legendary',146:'Legendary',150:'Legendary',
+  151:'Mythical',
+  152:'Starter',153:'Starter',154:'Starter',155:'Starter',156:'Starter',157:'Starter',
+  158:'Starter',159:'Starter',160:'Starter',
+  172:'Baby',173:'Baby',174:'Baby',175:'Baby',236:'Baby',238:'Baby',239:'Baby',240:'Baby',
+  196:'Eeveelution',197:'Eeveelution',
+  243:'Legendary',244:'Legendary',245:'Legendary',249:'Legendary',250:'Legendary',
+  251:'Mythical',
+  252:'Starter',253:'Starter',254:'Starter',255:'Starter',256:'Starter',257:'Starter',
+  258:'Starter',259:'Starter',260:'Starter',
+  345:'Fossil',346:'Fossil',347:'Fossil',348:'Fossil',
+  377:'Legendary',378:'Legendary',379:'Legendary',
+  380:'Legendary',381:'Legendary',
+  382:'Legendary',383:'Legendary',384:'Legendary',
+  385:'Mythical',386:'Mythical',
+};
+
+function getCategory(id) {
+  if (CATEGORIES[id]) return CATEGORIES[id] + ' Pokémon';
+  if (id <= 151) return 'Kanto Pokémon';
+  if (id <= 251) return 'Johto Pokémon';
+  return 'Hoenn Pokémon';
+}
 
 const SPRITE_URL      = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const SPRITE_OFFICIAL = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
